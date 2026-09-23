@@ -1,0 +1,82 @@
+export const ROLES = {
+  PASANTE: 'PASANTE',
+  COORDINADOR: 'COORDINADOR',
+  ADMIN: 'ADMIN',
+}
+
+// Jerarquía de roles: solo se puede desactivar/eliminar cuentas de rango menor.
+export const ROLE_RANK = {
+  [ROLES.PASANTE]: 1,
+  [ROLES.COORDINADOR]: 2,
+  [ROLES.ADMIN]: 3,
+}
+
+export const AREAS = {
+  MEDICINA: 'MEDICINA',
+  NUTRICION: 'NUTRICION',
+}
+
+// Etiquetas legibles por área para la UI (chips, badges).
+export const AREA_LABELS = {
+  [AREAS.MEDICINA]: 'Medicina',
+  [AREAS.NUTRICION]: 'Nutrición',
+}
+
+export const ESTADOS = {
+  ACTIVO: 'ACTIVO',
+  INACTIVO: 'INACTIVO',
+  PENDIENTE: 'PENDIENTE',
+}
+
+export const ACCIONES = {
+  CREAR: 'CREAR',
+  ACTUALIZAR: 'ACTUALIZAR',
+  ELIMINAR: 'ELIMINAR',
+  INICIAR_SESION: 'INICIAR_SESION',
+}
+
+export const ENTIDADES = {
+  NOTA_EVOLUCION: 'NOTA_EVOLUCION',
+  EXAM_FIS_ORIEN_NUTRICION: 'EXAMINACION_FISICA',
+  TPAN: 'TPAN',
+  EVAL_ANTROPOMETRICA: 'EVAL_ANTROPOMETRICA',
+  REC_24H: 'REC_24H',
+  CAL_GET_NUTR: 'CAL_GET_NUTR',
+  HISTORIA_MEDICA: 'HISTORIA_MEDICA',
+  HISTORIA_NUTRICION: 'HISTORIA_NUTRICION',
+  EVAL_BIOQ_NUTRICION: 'EVAL_BIOQ_NUTRICION',
+  EVAL_NUTRICIONAL: 'EVAL_NUTRICIONAL',
+  EVAL_ACT_FISICA_NUTRICION: 'EVAL_ACT_FISICA_NUTRICION',
+  EVAL_CAL_SUENO: 'EVAL_CAL_SUENO',
+  REPORTE_EEN: 'REPORTE_EEN',
+  EMERGENCIA: 'EMERGENCIA',
+  PACIENTE: 'PACIENTE',
+  USUARIO: 'USUARIO',
+}
+
+// Requisitos de contraseña para auto-registro
+export const PASSWORD_REQUIREMENTS = [
+  { label: 'Al menos 8 caracteres', test: (v) => v.length >= 8 },
+  { label: 'Una letra mayúscula', test: (v) => /[A-Z]/.test(v) },
+  { label: 'Una letra minúscula', test: (v) => /[a-z]/.test(v) },
+  {
+    label: 'Un carácter especial (!@#$%^&*)',
+    test: (v) => /[!@#$%^&*]/.test(v),
+  },
+]
+
+// Claves de ordenamiento válidas para usuarios
+export const USER_SORT_KEYS = {
+  NOMBRE_ASC: 'nombre-asc',
+  NOMBRE_DESC: 'nombre-desc',
+  LOGIN_ASC: 'login-asc',
+  LOGIN_DESC: 'login-desc',
+}
+
+// Definiciones completas — el backend las usa para construir el orderBy de Prisma
+export const USER_SORT_DEFS = [
+  { key: USER_SORT_KEYS.NOMBRE_ASC, field: 'nombre', dir: 'asc' },
+  { key: USER_SORT_KEYS.NOMBRE_DESC, field: 'nombre', dir: 'desc' },
+  { key: USER_SORT_KEYS.LOGIN_ASC, field: 'ultimo_acceso', dir: 'asc' },
+  { key: USER_SORT_KEYS.LOGIN_DESC, field: 'ultimo_acceso', dir: 'desc' },
+]

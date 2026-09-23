@@ -1,0 +1,146 @@
+import { randomUUID } from 'node:crypto'
+import { INVITATION_TTL_MS } from '#lib/constants.js'
+import { InvitationModel } from '#models/InvitationModel.js'
+import { prisma } from '#config/prisma.js'
+import { sendEmail } from '#lib/sendEmail.js'
+import { registerEmail } from '#lib/registerEmail.js'
+import { serverConfig } from '#config/env.js'
+import { BadGatewayError, ConflictError, ForbiddenError, ValidationError } from '#lib/appError.js'
+import { ROLES } from '@cais/shared/constants/users'
+
+export class UserService {
+  // `creator`: { userId, role, areaId } de la sesión. Impone la autorización de
+  // área/rol: un no-admin solo invita a su propia área y no puede crear ADMIN.
+  static async preRegister(usersData, creator) {
+    if (!serverConfig.emailEnabled) {
+      throw new BadGatewayError('El envío de correos no está configurado en este servidor')
+    }
+    const { userId: creadoPor, role: creatorRole, areaId: creatorAreaId } = creator
+    const emails = usersData.map((u) => u.email)
+
+    const uniqueEmails = [...new Set(emails)]
+    if (uniqueEmails.length < emails.length) {
+      const seen = new Set()
+      const dupes = emails.filter((e) => (seen.has(e) ? true : !seen.add(e)))
+      throw new ConflictError('El payload contiene correos duplicados', {
+        emails: [...new Set(dupes)],
+      })
+    }
+
+    const existing = await prisma.usuarios.findMany({
+      where: { correo: { in: emails } },
+      select: { correo: true },
+    })
+
+    if (existing.length > 0) {
+      throw new ConflictError('Uno o más correos ya tienen una cuenta registrada', {
+        emails: existing.map((u) => u.correo),
+      })
+    }
+
+    const pendingInvitations = await prisma.invitaciones_registro.findMany({
+      where: { correo: { in: emails }, usado: false },
+      select: { correo: true },
+    })
+
+    if (pendingInvitations.length > 0) {
+      throw new ConflictError('Uno o más correos ya tienen una invitación pendiente', {
+        emails: pendingInvitations.map((i) => i.correo),
+      })
+    }
+
+    const isAdminCreator = creatorRole === ROLES.ADMIN
+    const areaRows = await prisma.areas.findMany({ select: { id: true, nombre: true } })
+    const areaIdByName = new Map(areaRows.map((a) => [a.nombre, a.id]))
+    const roleRows = await prisma.roles.findMany({ select: { id: true, codigo: true } })
+    const roleIdByCode = new Map(roleRows.map((r) => [r.codigo, r.id]))
+
+    const invitations = []
+
+    for (const u of usersData) {
+      const roleUp = u.role.toUpperCase()
+      const roleId = roleIdByCode.get(roleUp)
+      if (!roleId) throw new Error(`Rol "${u.role}" no existe`)
+
+      let areaId
+      if (!isAdminCreator) {
+        // El coordinador solo invita dentro de su propia área y nunca admins.
+        if (roleUp === ROLES.ADMIN) {
+          throw new ForbiddenError('No tienes permiso para invitar administradores')
+        }
+        areaId = creatorAreaId
+      } else if (roleUp === ROLES.ADMIN) {
+        areaId = null
+      } else {
+        areaId = u.area ? areaIdByName.get(u.area.toUpperCase()) : undefined
+        if (areaId == null) {
+          throw new ValidationError('El área es requerida para este rol', { emails: [u.email] })
+        }
+      }
+
+      invitations.push({
+        correo: u.email,
+        rolId: roleId,
+        areaId,
+        token: randomUUID(),
+        expiraAt: new Date(Date.now() + INVITATION_TTL_MS),
+        creadoPor,
+      })
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await InvitationModel.insertMany(invitations, tx)
+      })
+    } catch (err) {
+      // Carrera: un correo consiguió una invitación entre el chequeo y el insert.
+      // Reconsultamos para reportar solo los que realmente chocaron.
+      if (err.code === 'P2002') {
+        const raced = await prisma.invitaciones_registro.findMany({
+          where: { correo: { in: emails }, usado: false },
+          select: { correo: true },
+        })
+        throw new ConflictError('Uno o más correos ya tienen una invitación pendiente', {
+          emails: raced.map((i) => i.correo),
+        })
+      }
+      throw err
+    }
+
+    const emailErrors = []
+    for (const inv of invitations) {
+      const url = `${serverConfig.frontendUrl}/registro?token=${inv.token}`
+      try {
+        await sendEmail({
+          to: inv.correo,
+          subject: 'Completa tu registro — CAIS',
+          html: registerEmail(inv.correo, url),
+        })
+      } catch (err) {
+        emailErrors.push({ email: inv.correo, error: err.message })
+      }
+    }
+
+    return {
+      created: invitations.length,
+      emailErrors,
+    }
+  }
+
+  static async resendInvitation(correo) {
+    if (!serverConfig.emailEnabled) {
+      throw new BadGatewayError('El envío de correos no está configurado en este servidor')
+    }
+    const updated = await InvitationModel.refreshToken(correo)
+    if (!updated) return null
+
+    const url = `${serverConfig.frontendUrl}/registro?token=${updated.token}`
+    await sendEmail({
+      to: correo,
+      subject: 'Completa tu registro — CAIS',
+      html: registerEmail(correo, url),
+    })
+
+    return { correo }
+  }
+}

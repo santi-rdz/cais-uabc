@@ -1,0 +1,62 @@
+# Login (sign-in)
+POST http://localhost:8000/api/auth/sign-in/email
+Content-Type: application/json
+
+{
+  "email": "raul.rodriguez@uabc.edu.mx",
+  "password": "hash1"
+}
+### login basico
+POST http://localhost:8000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "sofia.navarro@uabc.edu.mx",
+  "password": "hash6"
+}
+
+### obtener usuarios
+GET http://localhost:8000/usuarios?status=activo
+
+### obtener usuario por id
+GET http://localhost:8000/usuarios/e44eeb28-c90d-11f0-a871-32f11762817d
+
+### Crear un Pre-Usuario (Creado pro coordinador)
+POST http://localhost:8000/usuarios/pre
+Content-Type: application/json
+
+[
+  {
+    "email": "juan.perez@uabc.edu.mx",
+    "role": "pasante",
+    "status": "pendiente",
+    "area": "medicina"
+  }
+]
+
+### Crear usuario completo
+POST http://localhost:8000/usuarios/complete
+Content-Type: application/json
+
+{
+  "name": "Prueba",
+  "email": "pruebamil@uabc.edu.mx",
+  "birthDay": "2003-04-25",
+  "phone": "6861234567",
+  "role": "pasante",
+  "area": "medicina",
+  "password": "miPasswordSuperSecreta123"
+}
+
+### Borrar usuario
+DELETE http://localhost:8000/usuarios/7cee3714-c966-11f0-bbc2-32e75892ed20
+
+
+### Acutalizar usuario TODO
+PATCH http://localhost:8000/usuarios/e44eeb28-c90d-11f0-a871-32f11762817d
+Content-Type: application/json
+
+{
+  "status": "inactivo",
+  "role": "coordinador"
+}

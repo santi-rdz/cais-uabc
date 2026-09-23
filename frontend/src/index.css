@@ -1,0 +1,183 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant active-route (&:where(.active));
+
+@font-face {
+  font-family: 'geist';
+  src: url('assets/fonts/Geist/Geist-VariableFont_wght.ttf');
+}
+@font-face {
+  font-family: 'lato';
+  src: url('assets/fonts/Lato/Lato-Bold.ttf');
+}
+
+@theme {
+  --font-geist: 'geist', sans-serif;
+  --font-lato: 'lato', sans-serif;
+  --color-black-50: #f2f2f2;
+  --color-white-mint: #d0ecdf;
+  --color-dark-gray: #202224;
+  --color-backdrop-color: rgba(255, 255, 255, 0.1);
+  --shadow-card: 0 2px 10px -4px rgba(0, 0, 0, 0.05);
+  --animate-rotate: rotate 1.5s linear infinite;
+  @keyframes rotate {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+}
+
+@utility text-1 {
+  font-size: clamp(1.5rem, 1.368rem + 0.5634vw, 1.875rem);
+  line-height: 1.25;
+  letter-spacing: -0.05px;
+}
+
+@utility text-2 {
+  font-size: clamp(1.25rem, 0.8239rem + 0.7512vw, 1.5rem);
+  line-height: 1.25;
+}
+@utility text-3 {
+  font-size: clamp(0.9375rem, 0.8715rem + 0.2817vw, 1.125rem);
+  line-height: 1.25;
+}
+
+@utility text-4 {
+  font-size: clamp(0.875rem, 0.831rem + 0.1878vw, 1rem);
+  line-height: 1.25;
+}
+@utility text-5 {
+  font-size: clamp(0.6875rem, 0.6215rem + 0.2817vw, 0.875rem);
+  line-height: 1.25;
+}
+@utility text-6 {
+  font-size: clamp(0.625rem, 0.581rem + 0.1878vw, 0.75rem);
+  line-height: 1.25;
+}
+@utility text-7 {
+  font-size: clamp(0.5rem, 0.47rem + 0.15vw, 0.625rem);
+  line-height: 1.2;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'sidebar header'
+    'sidebar main';
+}
+
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'header'
+      'main';
+  }
+}
+
+.login {
+  @apply absolute inset-0 -z-10 bg-cover bg-center;
+  background-image: url('./assets/images/uabc-bg.png');
+}
+
+@utility my-container {
+  width: min(95%, 90rem);
+  margin-inline: auto;
+}
+
+/* MUI Date/Time Picker — primary color override */
+.MuiPickersDay-root.Mui-selected,
+.MuiPickersDay-root.Mui-selected:hover,
+.MuiPickersDay-root.Mui-selected:focus,
+.MuiMultiSectionDigitalClockSection-item.Mui-selected,
+.MuiYearCalendar-button.Mui-selected,
+.MuiMonthCalendar-button.Mui-selected {
+  background-color: #166534 !important;
+  color: #fff !important;
+}
+
+.MuiPickersDay-root:not(.Mui-selected):hover,
+.MuiMultiSectionDigitalClockSection-item:not(.Mui-selected):hover,
+.MuiYearCalendar-button:not(.Mui-selected):hover,
+.MuiMonthCalendar-button:not(.Mui-selected):hover {
+  background-color: #dcfce7 !important;
+}
+
+.MuiPickersDay-today:not(.Mui-selected) {
+  border-color: #166534 !important;
+}
+
+.MuiMultiSectionDigitalClockSection-item {
+  border-radius: 8px !important;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.625rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.error {
+  @apply outline-[1.5px] outline-offset-2 outline-red-400;
+}
+
+/* Scrollbar personalizado — solo en dispositivos con puntero fino (no touch) */
+@media (pointer: fine) {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-dark-gray) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-dark-gray);
+    border-radius: 3px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  /* Scrollbar que solo se muestra al hacer hover */
+  .scrollbar-hover {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.2s ease;
+  }
+  .scrollbar-hover::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-hover::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-hover::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 4px;
+  }
+  .scrollbar-hover:hover {
+    scrollbar-color: #d1d5db transparent; /* tailwind gray-300 */
+  }
+  .scrollbar-hover:hover::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+  }
+}

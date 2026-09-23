@@ -1,0 +1,39 @@
+import { fetchApi } from '@lib/fetchApi'
+
+// Registro atómico: crea paciente + 1ª historia médica en un solo request.
+export async function registerMedicalPatient(body) {
+  return fetchApi('/medicina/pacientes', {
+    method: 'POST',
+    body,
+    errorMsg: 'Error al registrar al paciente',
+  })
+}
+
+export async function createMedicalHistory(data) {
+  return fetchApi('/medicina/historias-medicas', {
+    method: 'POST',
+    body: data,
+    errorMsg: 'Error al crear historia médica',
+  })
+}
+
+export async function getMedicalHistory(id) {
+  return fetchApi(`/medicina/historias-medicas/${id}`, {
+    errorMsg: 'Error al obtener historia médica',
+  })
+}
+
+export async function updateMedicalHistory(id, data) {
+  return fetchApi(`/medicina/historias-medicas/${id}`, {
+    method: 'PATCH',
+    body: data,
+    errorMsg: 'Error al actualizar historia médica',
+  })
+}
+
+export async function getMedicalHistories(paciente_id) {
+  const params = new URLSearchParams({ paciente_id, fields: 'expedida_en' })
+  return fetchApi(`/medicina/historias-medicas?${params}`, {
+    errorMsg: 'Error al obtener historias médicas',
+  })
+}

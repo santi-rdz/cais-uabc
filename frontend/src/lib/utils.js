@@ -1,0 +1,127 @@
+import { clsx } from 'clsx'
+import { extendTailwindMerge } from 'tailwind-merge'
+import dayjs from 'dayjs'
+import { ROLES } from '@cais/shared/constants/users'
+
+export const doctorPrefix = (rol) => (rol?.toUpperCase() === ROLES.ADMIN ? '' : 'Dr. ')
+
+export const shortName = (nombre, apellidos) => {
+  const inicial = apellidos?.trim()?.[0]
+  return inicial ? `${nombre} ${inicial.toUpperCase()}.` : (nombre ?? '')
+}
+
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [{ text: ['1', '2', '3', '4', '5', '6', '7'] }],
+    },
+  },
+})
+
+export function cn(...inputs) {
+  return twMerge(clsx(inputs))
+}
+
+export const isValidEmail = (email) => /^[\w.-]+@([\w-]+\.)+[a-zA-Z]{2,}$/.test(email)
+
+export const getInitials = (nombre, apellidos) =>
+  `${nombre?.[0] ?? ''}${apellidos?.[0] ?? ''}`.toUpperCase()
+
+// Formatea un número para lectura: separador de miles y hasta 1 decimal.
+// Devuelve '—' si el valor no es numérico.
+export const formatNumber = (value, maxDecimals = 1) => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return n.toLocaleString('es-MX', { maximumFractionDigits: maxDecimals })
+}
+
+/**
+ * Omite recursivamente keys con valor vacío ('', null, undefined).
+ * Si un objeto anidado queda sin keys, también se omite.
+ * Solo recursiona en objetos planos, preservando Dayjs, Date, y otras instancias.
+ */
+export function omitEmpty(obj) {
+  const result = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v == null || (typeof v === 'string' && v.trim() === '')) continue
+    if (typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      const cleaned = omitEmpty(v)
+      if (Object.keys(cleaned).length) result[k] = cleaned
+    } else {
+      result[k] = v
+    }
+  }
+  return result
+}
+
+/**
+ * Extrae solo los campos que el usuario modificó (dirty) del formulario.
+ */
+export function pickDirty(data, dirtyFields) {
+  const result = {}
+  for (const key of Object.keys(dirtyFields)) {
+    if (key in data) result[key] = data[key]
+  }
+  return result
+}
+
+/**
+ * Convierte recursivamente strings vacíos a null (usado en edición para limpiar
+ * campos). También convierte `undefined` a null: los campos numéricos (`num`/
+ * `int` en shared/schemas/fields.js) preprocesan un input vacío a `undefined`
+ * en vez de `''` — si se dejara pasar, `JSON.stringify` lo descarta del body y
+ * el PATCH nunca llega a limpiar ese campo en el backend.
+ */
+export function nullifyEmpty(obj) {
+  const result = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== null && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      result[k] = nullifyEmpty(v)
+    } else if (v === undefined || (typeof v === 'string' && v.trim() === '')) {
+      result[k] = null
+    } else {
+      result[k] = v
+    }
+  }
+  return result
+}
+
+/**
+ * Rellena un template de default values con los valores de `source`, campo por
+ * campo (incluso dentro de sub-objetos anidados), preservando el default si el
+ * campo no vino en `source`. Usado para construir defaultValues de edición en
+ * forms multi-step sin perder shape ante campos ausentes en la respuesta del API.
+ */
+export function fillDefaults(defaults, source) {
+  const result = {}
+  for (const [key, defaultVal] of Object.entries(defaults)) {
+    const srcVal = source?.[key]
+    if (
+      defaultVal !== null &&
+      typeof defaultVal === 'object' &&
+      !Array.isArray(defaultVal) &&
+      !(defaultVal instanceof Date) &&
+      !dayjs.isDayjs(defaultVal)
+    ) {
+      result[key] = fillDefaults(defaultVal, srcVal)
+    } else {
+      result[key] = srcVal ?? defaultVal
+    }
+  }
+  return result
+}
+
+/**
+ * Formats a 10-digit phone string to (XXX) XXX-XXXX.
+ * Strips non-digits first, so it works with raw stored values or partially typed input.
+ * @param {string} value - Raw or formatted phone string
+ * @returns {string} Formatted phone number
+ */
+export function formatPhone(value) {
+  if (!value) return ''
+  const digits = String(value).replace(/\D/g, '').slice(0, 10)
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}

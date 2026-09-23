@@ -1,0 +1,24 @@
+import { Router } from 'express'
+import { InvitationController } from '#controllers/invitations.js'
+import { requireAuth, requireRole } from '#middleware/auth.js'
+import { validate } from '#middleware/validate.js'
+import { validateInvitedUser } from '@cais/shared/schemas/invitations'
+import { ROLES } from '@cais/shared/constants/users'
+
+const privileged = requireRole(ROLES.COORDINADOR, ROLES.ADMIN)
+
+export const invitationRouter = new Router()
+
+// Pública — validar token de invitación (usuario no autenticado)
+invitationRouter.get('/:token', InvitationController.validateToken)
+
+// Requiere sesión y rol
+invitationRouter.post(
+  '/',
+  requireAuth,
+  privileged,
+  validate(validateInvitedUser),
+  InvitationController.create
+)
+invitationRouter.post('/reenviar', requireAuth, privileged, InvitationController.resend)
+invitationRouter.delete('/', requireAuth, privileged, InvitationController.remove)

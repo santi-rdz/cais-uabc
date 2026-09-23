@@ -1,0 +1,53 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import AppLayout from '@ui/AppLayout'
+import HomeRedirect from '@ui/HomeRedirect'
+import Dashboard from '@pages/Dashboard'
+import Auth from '@pages/Auth'
+import LoginForm from '@features/authentication/LoginForm'
+import ForgotPasswordForm from '@features/authentication/ForgotPasswordForm'
+import ResetPasswordForm from '@features/authentication/ResetPasswordForm'
+import RegisterPage from '@pages/RegisterPage'
+import Users from '@pages/Users'
+import ProtectedRoute from '@ui/ProtectedRoute'
+import Emergencies from '@pages/Emergencies'
+import EmergencyDetail from '@pages/EmergencyDetail'
+import Patients from '@pages/Patients'
+import PatientDetail from '@pages/PatientDetail'
+import UserDetail from '@pages/UserDetail'
+import Profile from '@pages/Profile'
+import Estadisticas from '@pages/Estadisticas'
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<HomeRedirect />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="pacientes" element={<Patients />} />
+          <Route path="pacientes/:id" element={<PatientDetail />} />
+          <Route path="usuarios" element={<Users />} />
+          <Route path="usuarios/:id" element={<UserDetail />} />
+          <Route path="emergencias" element={<Emergencies />} />
+          <Route path="emergencias/:id" element={<EmergencyDetail />} />
+          <Route path="estadisticas" element={<Estadisticas />} />
+          <Route path="perfil" element={<Profile />} />
+        </Route>
+        <Route element={<Auth />}>
+          <Route path="login" element={<LoginForm />} />
+          <Route path="recuperar-contrasena" element={<ForgotPasswordForm />} />
+          <Route path="restablecer-contrasena/:token" element={<ResetPasswordForm />} />
+
+          <Route path="registro" element={<RegisterPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
+}
+export default App

@@ -1,0 +1,61 @@
+node_modules
+**/node_modules
+.pnpm-store
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+
+Dockerfile
+compose.yml
+compose.*.yml
+.dockerignore
+
+# Builds / artifacts
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files (no se filtran al image)
+.env
+.env.*
+!.env.example
+
+# Tests
+**/__tests__/__snapshots__
+**/__tests__
+**/*.test.js
+**/*.test.jsx
+**/*.spec.js
+**/*.spec.jsx
+**/jest.config.js
+**/jest.teardown.js
+
+# Docs y miscelánea que no debe entrar a la imagen
+docs
+**/docs
+**/README.md
+**/readme.md
+**/*.md
+!frontend/index.html
+.husky
+.gitleaks.toml
+.prettierrc
+.prettierignore
+eslint.config.js
+skills-lock.json
+
+# Archivos HTTP del backend (para REST Client de VSCode)
+backend/http

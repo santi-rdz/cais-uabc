@@ -1,0 +1,102 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+x-platform: &default-platform ${BUILD_PLATFORM:-linux/amd64}
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: prod
+      platforms:
+        - *default-platform
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    image: cais/frontend:${IMAGE_TAG:?IMAGE_TAG es requerido (ej. v1.0.0)}
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-8080}:8080'
+    networks:
+      - web
+    depends_on:
+      backend:
+        condition: service_started
+    logging: *default-logging
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 128M }
+        reservations: { cpus: '0.1', memory: 32M }
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: prod
+      platforms:
+        - *default-platform
+    image: cais/backend:${IMAGE_TAG:?IMAGE_TAG es requerido (ej. v1.0.0)}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL es requerido en prod}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL es requerido en prod}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET es requerido en prod}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-}
+      ADMIN_APELLIDOS: ${ADMIN_APELLIDOS:-}
+      ICD_CLIENT_ID: ${ICD_CLIENT_ID:-}
+      ICD_CLIENT_SECRET: ${ICD_CLIENT_SECRET:-}
+    networks:
+      - web
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *default-logging
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+        reservations: { cpus: '0.25', memory: 128M }
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD es requerido en prod}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-cais}
+      MYSQL_USER: ${MYSQL_USER:-user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD es requerido en prod}
+    networks:
+      - backend
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${MYSQL_ROOT_PASSWORD}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+        reservations: { cpus: '0.25', memory: 256M }
+
+networks:
+  web:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  db_data:

@@ -1,0 +1,89 @@
+{
+  "name": "cais",
+  "version": "1.1.0",
+  "description": "Administration System for UABC \"Centro de Atencion Integral para la Salud\"",
+  "homepage": "https://github.com/santi-rdz/cais-uabc#readme",
+  "packageManager": "pnpm@11.5.1",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "bugs": {
+    "url": "https://github.com/santi-rdz/cais-uabc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santi-rdz/cais-uabc.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": "11.5.1"
+  },
+  "main": "index.js",
+  "scripts": {
+    "//— Lint —": "",
+    "check": "eslint . && prettier . --check",
+    "format": "prettier . --write",
+    "//— Setup (primera vez) —": "",
+    "setup": "pnpm install && pnpm db:up && pnpm db:wait && pnpm --filter backend run prisma:generate && pnpm --filter backend run prisma:deploy && pnpm seed",
+    "//— Desarrollo (host nativo + DB en Docker) —": "",
+    "dev": "pnpm db:up && pnpm db:wait && pnpm --parallel --filter frontend --filter backend run dev",
+    "seed": "pnpm --filter backend run prisma:seed",
+    "//— Prisma —": "",
+    "prisma:migrate": "pnpm --filter backend run prisma:migrate",
+    "prisma:deploy": "pnpm --filter backend run prisma:deploy",
+    "prisma:generate": "pnpm --filter backend run prisma:generate",
+    "prisma:studio": "pnpm --filter backend run prisma:studio",
+    "prisma:seed": "pnpm --filter backend run prisma:seed",
+    "//— DB de desarrollo —": "",
+    "db:up": "docker compose -f compose.dev.yml up -d",
+    "db:down": "docker compose -f compose.dev.yml down",
+    "db:fresh": "docker compose -f compose.dev.yml down -v && pnpm db:up && pnpm db:wait && pnpm --filter backend run prisma:deploy && pnpm seed",
+    "db:logs": "docker compose -f compose.dev.yml logs -f db",
+    "db:sql": "docker compose -f compose.dev.yml exec db mysql -u user -puser cais",
+    "db:wait": "node scripts/db-wait.mjs",
+    "//— Producción (Docker completo) — usa .env.production —": "",
+    "build": "docker compose --env-file .env.production build",
+    "up": "docker compose --env-file .env.production up -d",
+    "down": "docker compose --env-file .env.production down",
+    "restart": "docker compose --env-file .env.production up -d --build",
+    "fresh": "docker compose --env-file .env.production down -v && docker compose --env-file .env.production up -d --build --wait",
+    "logs": "docker compose --env-file .env.production logs -f",
+    "ps": "docker compose --env-file .env.production ps",
+    "//— Tests —": "",
+    "test": "pnpm --filter backend test",
+    "test:debug": "pnpm --filter backend test:debug",
+    "preinstall": "node scripts/ensure-pnpm.js",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css,html}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.4",
+    "eslint": "9.39.4",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "eslint-plugin-react-refresh": "0.4.26",
+    "eslint-plugin-unused-imports": "4.4.1",
+    "globals": "14.0.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.0.7",
+    "prettier": "3.8.1",
+    "prettier-plugin-tailwindcss": "0.7.2"
+  }
+}

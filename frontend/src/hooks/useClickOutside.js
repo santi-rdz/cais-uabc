@@ -1,0 +1,24 @@
+import { useEffect, useRef } from 'react'
+
+export default function useClickOutside(handleClick, propagation = true, ignoreSelector = null) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        if (ignoreSelector && event.target.closest(ignoreSelector)) return
+        handleClick()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside, propagation)
+    document.addEventListener('touchstart', handleClickOutside, propagation)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, propagation)
+      document.removeEventListener('touchstart', handleClickOutside, propagation)
+    }
+  }, [ref, handleClick, propagation, ignoreSelector])
+
+  return ref
+}

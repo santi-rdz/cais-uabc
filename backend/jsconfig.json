@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@cais/shared/*": ["../shared/*"],
+      "#app": ["./src/app.js"],
+      "#config/*": ["./src/config/*"],
+      "#lib/*": ["./src/lib/*"],
+      "#models/*": ["./src/models/*"],
+      "#controllers/*": ["./src/controllers/*"],
+      "#middleware/*": ["./src/middleware/*"],
+      "#routes/*": ["./src/routes/*"],
+      "#services/*": ["./src/services/*"],
+      "#jobs/*": ["./src/jobs/*"]
+    }
+  },
+  "include": ["src"]
+}

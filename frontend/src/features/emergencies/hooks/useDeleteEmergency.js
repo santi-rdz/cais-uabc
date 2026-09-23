@@ -1,0 +1,28 @@
+import { formatFecha } from '@lib/dateHelpers'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { deleteEmergency as apiDeleteEmergency } from '@services/apiEmergencies'
+import { toastApiError } from '@lib/ApiError'
+
+export function useDeleteEmergency() {
+  const queryClient = useQueryClient()
+  const { mutateAsync, isPending: isDeleting } = useMutation({
+    mutationFn: (id) => apiDeleteEmergency(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['emergencies'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    },
+  })
+
+  function deleteEmergency(id) {
+    const promise = mutateAsync(id)
+    toast.promise(promise, {
+      loading: 'Eliminando emergencia...',
+      success: (data) => `Emergencia del ${formatFecha(data.fecha_hora)} eliminada`,
+      error: toastApiError,
+    })
+    return promise
+  }
+
+  return { deleteEmergency, isDeleting }
+}

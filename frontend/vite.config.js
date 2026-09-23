@@ -1,0 +1,40 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  // @react-pdf/renderer importa `tslib` como bare module que el optimizador de
+  // Vite no descubre solo; forzar su pre-bundle evita el fallo de resolución.
+  optimizeDeps: {
+    include: ['tslib'],
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+  },
+  resolve: {
+    alias: {
+      '@ui': path.resolve(__dirname, './src/ui'),
+      '@components': path.resolve(__dirname, './src/ui/components'),
+      '@features': path.resolve(__dirname, './src/features'),
+      '@pages': path.resolve(__dirname, './src/pages'),
+      '@assets': path.resolve(__dirname, './src/assets'),
+      '@lib': path.resolve(__dirname, './src/lib'),
+      '@hooks': path.resolve(__dirname, './src/hooks'),
+      '@schemas': path.resolve(__dirname, './src/schemas'),
+      '@services': path.resolve(__dirname, './src/services'),
+      '@cais/shared': path.resolve(__dirname, '../shared'),
+    },
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    hmr: { clientPort: 5173 },
+  },
+})
