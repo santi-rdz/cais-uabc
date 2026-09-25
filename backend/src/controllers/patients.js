@@ -32,10 +32,11 @@ export class PatientController {
     if (req.session.areaId == null) {
       throw new ForbiddenError('Área no definida para este usuario')
     }
-    const similares = await PatientModel.findSimilar({
-      ...req.validatedQuery,
-      excludeAreaId: req.session.areaId,
-    })
+    const candidates = await PatientModel.findSimilar(req.validatedQuery)
+    const similares = candidates.map((c) => ({
+      ...c,
+      in_own_area: canAccessPatient(c, req.session),
+    }))
     res.json({ similares })
   }
 

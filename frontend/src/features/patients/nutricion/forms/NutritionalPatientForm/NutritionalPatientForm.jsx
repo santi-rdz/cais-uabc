@@ -89,14 +89,13 @@ export default function NutritionalPatientForm({
   const { isDirty } = methods.formState
   const StepComponent = activeStepComponents[currStep]
 
-  const [nombre, apellidos, fechaNacimiento, genero] = methods.watch([
+  const [nombre, apellidos, fechaNacimiento] = methods.watch([
     'nombre',
     'apellidos',
     'fecha_nacimiento',
-    'genero',
   ])
   const { similares } = useSimilarPatients(
-    { nombre, apellidos, fecha_nacimiento: fechaNacimiento, genero },
+    { nombre, apellidos, fecha_nacimiento: fechaNacimiento },
     isNew && !syncedPatient && currStep === 0
   )
 
@@ -160,7 +159,11 @@ export default function NutritionalPatientForm({
         <SyncedPatientBanner patient={syncedPatient} onUndo={() => setSyncedPatient(null)} />
       )}
       {!syncedPatient && similares.length > 0 && (
-        <SimilarPatientsBanner candidates={similares} onSync={setSyncedPatient} />
+        <SimilarPatientsBanner
+          candidates={similares}
+          onSync={setSyncedPatient}
+          onCloseModal={onCloseModal}
+        />
       )}
       <StepComponent syncMode={!!syncedPatient} />
     </StepFormShell>

@@ -48,11 +48,11 @@ Los endpoints de alta son `POST /medicina/pacientes` y `POST /nutricion/paciente
 
 ### Cómo se encuentra un paciente existente
 
-Al capturar nombre, apellidos, fecha de nacimiento y género, el frontend puede consultar `GET /pacientes/similares` para buscar candidatos de la otra área. La fecha debe coincidir exactamente; el nombre se compara con un score de similitud. Si la persona selecciona un resultado, el alta se envía con su `pacienteId`.
+Al capturar nombre, apellidos y fecha de nacimiento, el frontend puede consultar `GET /pacientes/similares` para buscar candidatos. La fecha debe coincidir exactamente; el nombre se compara con un score de similitud. Si el candidato es de otra área se ofrece sincronizarlo (el alta se envía con su `pacienteId`); si ya está en el área del usuario, se avisa del posible duplicado y se ofrece abrir su expediente.
 
 ```mermaid
 flowchart TD
-    A["Capturar nombre, apellidos, fecha de nacimiento y género"] --> B["GET /pacientes/similares"]
+    A["Capturar nombre, apellidos y fecha de nacimiento"] --> B["GET /pacientes/similares"]
     B --> C{"¿Hay un candidato adecuado en la otra área?"}
     C -->|No| D["Crear un paciente nuevo"]
     C -->|Sí| E["Ofrecer vincular el paciente encontrado"]

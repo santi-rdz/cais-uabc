@@ -1,12 +1,13 @@
 import dayjs from 'dayjs'
-import { HiOutlineArrowPathRoundedSquare } from 'react-icons/hi2'
+import { useNavigate } from 'react-router-dom'
+import { HiOutlineArrowPathRoundedSquare, HiOutlineArrowTopRightOnSquare } from 'react-icons/hi2'
 import { AREA_LABELS } from '@cais/shared/constants/users'
 import { getInitials } from '@lib/utils'
 import Button from '@components/Button'
 import Heading from '@components/Heading'
 import Tag from '@components/Tag'
 
-function CandidateRow({ candidate, onSync }) {
+function CandidateRow({ candidate, onSync, onOpen }) {
   const pct = Math.round(candidate.score * 100)
   const nacimiento = dayjs(candidate.fecha_nacimiento)
 
@@ -44,23 +45,39 @@ function CandidateRow({ candidate, onSync }) {
         </div>
       </div>
 
-      <Button size="sm" variant="primary" onClick={() => onSync(candidate)}>
-        <HiOutlineArrowPathRoundedSquare size={15} />
-        Sincronizar
-      </Button>
+      {candidate.in_own_area ? (
+        <Button size="sm" variant="secondary" onClick={() => onOpen(candidate)}>
+          <HiOutlineArrowTopRightOnSquare size={15} />
+          Ver expediente
+        </Button>
+      ) : (
+        <Button size="sm" variant="primary" onClick={() => onSync(candidate)}>
+          <HiOutlineArrowPathRoundedSquare size={15} />
+          Sincronizar
+        </Button>
+      )}
     </li>
   )
 }
 
-export default function SimilarPatientsBanner({ candidates, onSync }) {
+export default function SimilarPatientsBanner({ candidates, onSync, onCloseModal }) {
+  const navigate = useNavigate()
+  const hasOwnAreaMatch = candidates.some((c) => c.in_own_area)
+  const sorted = [...candidates].sort((a, b) => b.in_own_area - a.in_own_area)
+
+  function handleOpen(candidate) {
+    onCloseModal?.()
+    navigate(`/pacientes/${candidate.id}`)
+  }
+
   return (
     <section
       role="status"
-      className="shadow-card animate-in fade-in slide-in-from-top-2 mb-6 rounded-2xl border border-green-800/20 bg-gradient-to-r from-green-50/70 via-white to-white p-5 ring-1 ring-green-800/10 duration-300"
+      className="shadow-card animate-in fade-in slide-in-from-top-2 mb-6 rounded-2xl border border-green-800/20 bg-white p-5 ring-1 ring-green-800/10 duration-300"
     >
       <div className="flex items-center justify-between gap-3">
         <Heading as="h4" showBar required>
-          ¿Ya está registrado en otra área?
+          {hasOwnAreaMatch ? '¿Paciente duplicado?' : '¿Ya está registrado en otra área?'}
         </Heading>
         <span className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
@@ -70,13 +87,14 @@ export default function SimilarPatientsBanner({ candidates, onSync }) {
         </span>
       </div>
       <p className="text-6 mt-1 pl-3 text-gray-500">
-        Encontramos {candidates.length === 1 ? 'un expediente parecido' : 'expedientes parecidos'}{' '}
-        en otra área. Si es la misma persona, sincronízala para no duplicar su registro.
+        {hasOwnAreaMatch
+          ? 'Ya existe un expediente parecido en tu área. Revísalo antes de registrar uno nuevo.'
+          : `Encontramos ${candidates.length === 1 ? 'un expediente parecido' : 'expedientes parecidos'} en otra área. Si es la misma persona, sincronízala para no duplicar su registro.`}
       </p>
 
       <ul className="mt-3 divide-y divide-gray-100">
-        {candidates.map((c) => (
-          <CandidateRow key={c.id} candidate={c} onSync={onSync} />
+        {sorted.map((c) => (
+          <CandidateRow key={c.id} candidate={c} onSync={onSync} onOpen={handleOpen} />
         ))}
       </ul>
     </section>

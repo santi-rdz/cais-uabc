@@ -8,7 +8,7 @@ export default function SyncedPatientBanner({ patient, onUndo }) {
   return (
     <section
       role="status"
-      className="shadow-card animate-in fade-in slide-in-from-top-2 mb-6 flex items-center gap-4 rounded-2xl border border-green-800/20 bg-gradient-to-r from-green-50/70 via-white to-white p-5 ring-1 ring-green-800/10 duration-300"
+      className="shadow-card animate-in fade-in slide-in-from-top-2 mb-6 flex items-center gap-4 rounded-2xl border border-green-800/20 bg-white p-5 ring-1 ring-green-800/10 duration-300"
     >
       <span className="relative shrink-0">
         <span className="text-6 grid size-10 place-items-center rounded-full bg-green-100 font-medium text-green-800">

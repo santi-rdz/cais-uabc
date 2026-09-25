@@ -108,21 +108,14 @@ export class PatientModel {
     return this.getById(patientId, tx)
   }
 
-  // Candidatos a sincronizar desde otra área: ancla exacta (fecha de nacimiento
-  // y género) + similitud difusa de nombre. Devuelve solo identidad mínima —
-  // nada clínico ni PII extendida, porque cruza el aislamiento por área.
-  static async findSimilar({ nombre, apellidos, fecha_nacimiento, genero, excludeAreaId }) {
+  // Misma fecha de nacimiento + nombre similar. Solo datos de identidad.
+  static async findSimilar({ nombre, apellidos, fecha_nacimiento }) {
     const candidates = await prisma.pacientes.findMany({
       where: {
         deleted_at: null,
         fecha_nacimiento,
-        genero,
-        // Debe pertenecer a alguna área pero no a la del solicitante (excluye
-        // pacientes huérfanos sin membresía, que no son sincronizables).
-        pacientes_areas: {
-          some: {},
-          none: { area_id: excludeAreaId },
-        },
+        // Excluye pacientes huérfanos sin área.
+        pacientes_areas: { some: {} },
       },
       select: {
         id: true,

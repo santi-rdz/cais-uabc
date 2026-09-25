@@ -91,7 +91,7 @@ export class StatsModel {
     const result = await prisma.pacientes.groupBy({
       by: ['genero'],
       _count: { id: true },
-      where: { ...scope.pacientesFilter, genero: { not: null } },
+      where: scope.pacientesFilter,
     })
     return result.map((r) => ({ genero: r.genero, count: r._count.id }))
   }
@@ -102,9 +102,7 @@ export class StatsModel {
     const result = await prisma.pacientes.groupBy({
       by: ['es_externo'],
       _count: { id: true },
-      // Excluye datos viejos sin capturar (null): no se clasifican como interno
-      // para no inflar esa estadística.
-      where: { ...scope.pacientesFilter, es_externo: { not: null } },
+      where: scope.pacientesFilter,
     })
     const buckets = { interno: 0, externo: 0 }
     for (const r of result) buckets[r.es_externo ? 'externo' : 'interno'] += r._count.id
@@ -122,7 +120,6 @@ export class StatsModel {
         COUNT(*) AS count
       FROM pacientes p
       WHERE ${scope.pacientesSql}
-        AND p.fecha_nacimiento IS NOT NULL
       GROUP BY rango
       ORDER BY
         CASE rango

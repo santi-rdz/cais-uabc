@@ -6,9 +6,8 @@ import Input from '@components/Input'
 import Grid from '@components/Grid'
 import Divider from '@components/Divider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/Select'
-import BirthdayField from '@ui/BirthdayField'
 import PhoneField from '@ui/PhoneField'
-import ExternoCheckbox from '@features/patients/components/ExternoCheckbox'
+import BasicPatientFields from '@features/patients/components/BasicPatientFields'
 
 // `syncMode`: al sincronizar con un paciente de otra área se ocultan los campos
 // compartidos (ya capturados) y solo se piden los complementarios de medicina.
@@ -25,55 +24,7 @@ export default function DatosPersonalesStep({ syncMode = false }) {
             Información Básica Requerida
           </Heading>
 
-          <Grid cols={2} gap={4} mobileCols={2}>
-            <FormRow htmlFor="nombre" label="Nombre(s)" required>
-              <Input
-                {...register('nombre')}
-                id="nombre"
-                type="text"
-                placeholder="Ingrese nombre(s)"
-                hasError={errors?.nombre?.message}
-                variant="outline"
-                size="lg"
-              />
-            </FormRow>
-            <FormRow htmlFor="apellidos" label="Apellidos" required>
-              <Input
-                {...register('apellidos')}
-                id="apellidos"
-                type="text"
-                placeholder="Ingrese apellidos"
-                hasError={errors?.apellidos?.message}
-                variant="outline"
-                size="lg"
-              />
-            </FormRow>
-          </Grid>
-
-          <Grid cols={3} gap={4} mobileCols={2}>
-            <BirthdayField name="fecha_nacimiento" control={control} errors={errors} />
-            <PhoneField />
-            <FormRow label="Género" required error={errors?.genero?.message}>
-              <Controller
-                name="genero"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange} fullWidth>
-                    <SelectTrigger size="lg" hasError={errors?.genero?.message}>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Masculino">Masculino</SelectItem>
-                      <SelectItem value="Femenino">Femenino</SelectItem>
-                      <SelectItem value="Otro">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </FormRow>
-          </Grid>
-
-          <ExternoCheckbox />
+          <BasicPatientFields />
         </div>
       )}
 

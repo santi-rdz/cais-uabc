@@ -445,13 +445,13 @@ model notas_evolucion {
 model pacientes {
   id                            Bytes                           @id @default(dbgenerated("(uuid_to_bin(uuid()))")) @db.Binary(16)
   doctor_id                     Bytes                           @db.Binary(16)
-  nombre                        String?                         @db.VarChar(255)
-  apellidos                     String?                         @db.VarChar(255)
-  fecha_nacimiento              DateTime?                       @db.Date
-  es_externo                    Boolean?                        @default(false)
+  nombre                        String                          @db.VarChar(255)
+  apellidos                     String                          @db.VarChar(255)
+  fecha_nacimiento              DateTime                        @db.Date
+  es_externo                    Boolean                         @default(false)
   correo                        String?                         @db.VarChar(255)
-  telefono                      String?                         @db.VarChar(30)
-  genero                        String?                         @db.VarChar(20)
+  telefono                      String                          @db.VarChar(30)
+  genero                        String                          @db.VarChar(20)
   domicilio                     String?                         @db.VarChar(255)
   fuente_informacion            String?                         @db.VarChar(100)
   lugar_nacimiento              String?                         @db.VarChar(255)

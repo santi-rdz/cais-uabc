@@ -6,7 +6,6 @@ export const similarPatientsQuerySchema = z.object({
   nombre: z.string({ error: 'Debe ser texto' }).trim().min(SIMILAR_PATIENT_MIN_CHARS),
   apellidos: z.string({ error: 'Debe ser texto' }).trim().min(SIMILAR_PATIENT_MIN_CHARS),
   fecha_nacimiento: dateSchema,
-  genero: z.string({ error: 'Debe ser texto' }).min(1),
 })
 
 export function validateSimilarPatientsQuery(input) {
