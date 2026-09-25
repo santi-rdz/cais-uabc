@@ -76,7 +76,7 @@ export class XController {
 
 Al implementar un controlador:
 
-- No valides el cuerpo ni agregues `try/catch`. Express 5 propaga los errores de funciones `async`, y la validación se realiza en el middleware.
+- No valides el cuerpo ni agregues `try/catch`. El sistema ya centraliza el manejo de errores, por lo que se duplicaria trabajo. Express 5 propaga los errores de funciones `async`, y la validación se realiza en el middleware, unificando el formato de respuesta.
 - Deja que el modelo indique si el recurso no existe; `getById`, `update` y `delete` lanzan `NotFoundError` cuando corresponde.
 - Para errores de la aplicación, lanza la clase `AppError` adecuada. El middleware central construye la respuesta HTTP.
 - Ejecuta la modificación y su registro de auditoría en una sola transacción.
