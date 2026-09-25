@@ -1,25 +1,46 @@
 # 07 · Frontend
 
-React 19 + Vite + Tailwind v4 + TanStack Query v5. React Router v7. Formularios
-con `react-hook-form` + `zod`. Toasts con `sonner`. Íconos `react-icons/hi2`.
+El frontend está construido con React 19 y Vite. Usa Tailwind CSS 4 para estilos, React Router 7 para navegación y TanStack Query 5 para los datos que se obtienen del backend. Los formularios usan `react-hook-form` y Zod; las notificaciones se muestran con Sonner.
 
-> **Desktop-first.** El layout base es de escritorio; las variantes chicas se
-> escriben con `max-sm:` / `max-md:` / `max-lg:`. Nunca `sm:`/`md:`/`lg:` para
-> escalar desde móvil.
+## Cómo viajan los datos
 
-## Aliases de import
+Las páginas y componentes no hacen solicitudes HTTP directamente, llaman a hooks que usan servicios de `services/`; estos envían la solicitud mediante `fetchApi`. TanStack Query conserva los datos y actualiza la interfaz cuando una consulta o mutación termina.
 
-Siempre absolutos con alias, incluso dentro del mismo folder. Nada de `./X` ni `../X`.
-
+```mermaid
+flowchart LR
+    A["Página o componente"] --> B["Hook de la feature"]
+    B --> C["Servicio en services/"]
+    C --> D["fetchApi"]
+    D --> E["API del backend"]
+    E --> D
+    D --> B
+    B --> F["Cache de TanStack Query"]
+    F --> A
+    D -. "error de API" .-> G["toastApiError"]
 ```
-@ui/*  @components/*  @features/*  @pages/*  @hooks/*
-@schemas/*  @lib/*  @services/*  @assets/*  @cais/shared/*
-```
 
-## Capa REST · `services/`
+## Organización e imports
 
-Wrappers finos sobre `fetchApi` (en `@lib/`), siempre en **camelCase**
-(`apiUsers.js`, `apiPatient.js`).
+Los imports del frontend usan estos alias, incluso cuando el archivo importado está en la misma carpeta. Evita las rutas relativas como `./X` o `../X`.
+
+| Alias            | Carpeta o paquete                                 |
+| ---------------- | ------------------------------------------------- |
+| `@ui/*`          | Componentes de interfaz.                          |
+| `@components/*`  | Componentes reutilizables.                        |
+| `@features/*`    | Funcionalidades organizadas por dominio.          |
+| `@pages/*`       | Páginas y vistas principales.                     |
+| `@hooks/*`       | Hooks compartidos.                                |
+| `@schemas/*`     | Esquemas propios de los formularios.              |
+| `@lib/*`         | Utilidades compartidas del frontend.              |
+| `@services/*`    | Comunicación con la API.                          |
+| `@assets/*`      | Imágenes y otros recursos estáticos.              |
+| `@cais/shared/*` | Esquemas y constantes compartidos con el backend. |
+
+El diseño parte de escritorio. Para adaptar un componente a pantallas más pequeñas, usa las variantes `max-sm:`, `max-md:` o `max-lg:`. No uses `sm:`, `md:` o `lg:` para construir el diseño desde móvil hacia escritorio.
+
+## Servicios de API
+
+Los archivos de `services/` agrupan las llamadas a endpoints. Son wrappers delgados sobre `fetchApi`, con nombres en `camelCase`, por ejemplo `apiUsers.js` o `apiPatient.js`.
 
 ```js
 import { fetchApi } from '@lib/fetchApi'
@@ -38,19 +59,26 @@ export async function createUser(data) {
 }
 ```
 
-`fetchApi` ya: adjunta la cookie (`credentials: 'include'`), serializa el body a
-JSON, pone `Content-Type`, y **lanza `ApiError`** con `{ message, fields }`
-extraídos del backend. No parsees errores a mano; propaga y usa
-`toastApiError(error)` en el caller (ya lista los `fields` como bullets).
+`fetchApi` ya se encarga de incluir la cookie de sesión (`credentials: 'include'`), convertir el cuerpo a JSON y configurar `Content-Type`. Si el backend responde con un error, `fetchApi` lanza `ApiError` con el mensaje y los campos disponibles. No vuelvas a interpretar la respuesta manualmente: muestra los errores con `toastApiError(error)`, que también presenta los errores de campo como una lista.
 
-## Server state · TanStack Query
+## Datos del servidor con TanStack Query
 
-`staleTime: 5min`, `gcTime: 10min` (en `main.jsx`). Nunca uses `useEffect` +
-`fetch` para pedir datos.
+La configuración global, en `main.jsx`, considera los datos recientes durante 5 minutos (`staleTime`) y conserva en caché los datos inactivos durante 10 minutos (`gcTime`). Para pedir datos del backend, usa TanStack Query; no combines `useEffect` con `fetch`.
 
-- **Query keys consistentes**: `['users']`, `['user', id]`, `['patients']`, ...
-  Con filtros, inclúyelos en la key: `['users', status, rol, search, page]`.
-- **Mutaciones invalidan o setean cache**:
+### Claves de consulta
+
+Usa claves predecibles para que sea sencillo identificar e invalidar cada conjunto de datos. Incluye los filtros en la clave cuando cambien el resultado:
+
+| Datos                      | Clave de ejemplo                       |
+| -------------------------- | -------------------------------------- |
+| Lista de usuarios          | `['users']`                            |
+| Usuario individual         | `['user', id]`                         |
+| Lista de usuarios filtrada | `['users', status, rol, search, page]` |
+| Lista de pacientes         | `['patients']`                         |
+
+### Después de una mutación
+
+Cuando una mutación modifica datos, invalida las consultas afectadas o actualiza su caché. En este ejemplo, tras crear un usuario se vuelve a consultar la lista:
 
 ```js
 const { mutate } = useMutation({
@@ -63,17 +91,18 @@ const { mutate } = useMutation({
 })
 ```
 
-- **Paginación infinita** con piezas reutilizables: `useInfiniteList` (hook),
-  `LoadMore` (componente "Cargar más" / scroll infinito), `useDebounce`.
-- Ya hay >30 hooks en `features/<dominio>/hooks/`. Revisa antes de crear uno.
+Para listados que cargan más resultados, reutiliza `useInfiniteList` y el componente `LoadMore` (botón «Cargar más» o scroll infinito). `useDebounce` ayuda a evitar búsquedas en cada pulsación. Hay más de 30 hooks en `features/<dominio>/hooks/`; revisa si ya existe uno antes de crear otro.
 
-## Formularios · dos capas de schema
+## Formularios y validación
 
-1. **`@cais/shared/schemas/*`** — la validación real del backend. **Nunca** la
-   dupliques ni redefinas en el frontend.
-2. **`@schemas/*`** (`frontend/src/schemas/`) — _form-schemas_ que componen los
-   de shared y los adaptan al shape del form: campos `dayjs` en vez de ISO,
-   `refine` de "confirmar contraseña", `omit` de campos que el form no captura, etc.
+La validación se reparte entre esquemas compartidos y esquemas que preparan los datos para los formularios:
+
+| Esquema               | Ubicación                              | Responsabilidad                                                                                       |
+| --------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Esquema compartido    | `@cais/shared/schemas/*`               | Define las reglas de validación usadas por el backend y el frontend. No las dupliques en el frontend. |
+| Esquema de formulario | `@schemas/*` (`frontend/src/schemas/`) | Adapta el esquema compartido a los valores y controles del formulario.                                |
+
+Un esquema de formulario puede, por ejemplo, aceptar objetos `dayjs` para los selectores de fecha, validar la confirmación de una contraseña u omitir campos que el formulario no captura.
 
 ```js
 // frontend/src/schemas/medicalPatient.js
@@ -87,51 +116,49 @@ export const medicalPatientFormSchema = z.object({
 })
 ```
 
-Reglas:
+Al implementar formularios:
 
-- Nunca declares `z.object(...)` ni importes `zod` dentro de un componente/hook.
-  Si el schema depende de algo runtime, exporta una _factory_ desde `@schemas/`.
-- Formularios multi-paso: usa `useStepForm` (`@hooks/`). Ver
-  `features/patients/medicina/forms/MedicalPatientForm/`.
-- Errores de campo del backend (`error.fields`) se mapean con `setError(field, { message })`.
+- No declares `z.object(...)` ni importes Zod dentro de un componente o hook. Si la validación depende de valores en tiempo de ejecución, exporta una función factory desde `@schemas/`.
+- Para formularios de varios pasos, usa `useStepForm` de `@hooks/`. Puedes consultar `features/patients/medicina/forms/MedicalPatientForm/` como ejemplo.
+- Si el backend devuelve errores de campo en `error.fields`, asígnalos al formulario con `setError(field, { message })`.
 
-## Fechas en el frontend
+## Fechas
 
-El backend ya distingue el tipo por el formato (ver
-[03 · Base de datos](./03-base-de-datos-y-prisma.md)). En `@lib/dateHelpers`:
+El backend envía las fechas sin hora como `YYYY-MM-DD` y las fechas con hora como cadenas ISO. Consulta [03 · Base de datos y Prisma](./03-base-de-datos-y-prisma.md) para conocer el contrato completo.
 
-| Helper                                             | Para                                                                  |
-| -------------------------------------------------- | --------------------------------------------------------------------- |
-| `parseDate(value)`                                 | Cargar una **fecha-sola** (`'YYYY-MM-DD'`) en un dayjs (date pickers) |
-| `parseDateTime(value)`                             | Cargar una **fecha con hora** (ISO) en un dayjs                       |
-| `formatFecha`, `formatFechaLong`, `formatRelativo` | Mostrar fechas-sola                                                   |
-| `formatHora`, `formatFechaHora`                    | Mostrar datetimes                                                     |
+Usa los helpers de `@lib/dateHelpers` para convertir y mostrar fechas. Evita pasar directamente los valores de la API a `dayjs()`, porque las fechas sin hora podrían interpretarse de forma distinta según la zona horaria.
 
-Como las fechas-sola llegan como `'YYYY-MM-DD'`, `dayjs(value)` las lee como día
-local sin desfase. Usa siempre estos helpers en vez de `dayjs()` crudo.
+| Helper                                             | Uso                                                                               |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `parseDate(value)`                                 | Convierte una fecha sin hora (`YYYY-MM-DD`) para usarla en un selector de fechas. |
+| `parseDateTime(value)`                             | Convierte una fecha con hora (ISO).                                               |
+| `formatFecha`, `formatFechaLong`, `formatRelativo` | Muestran fechas sin hora.                                                         |
+| `formatHora`, `formatFechaHora`                    | Muestran fechas con hora.                                                         |
 
-## Permisos de UI
+## Permisos en la interfaz
 
-Tres piezas; nunca compares `user.rol` / `user.area` inline en un componente.
+Las reglas de permisos están centralizadas. No revises `user.rol` o `user.area` directamente en cada componente: usa las utilidades existentes para que la misma regla se aplique de forma consistente.
 
-- **`@lib/permissions.js`** — reglas puras. `PERMISSIONS` (enum), `can(user, perm)`,
-  `canSeeRoute(user, route)`. Para agregar un permiso: añade la clave y su regla en `RULES`.
-- **`@hooks/usePermissions.js`** — hook React:
-  ```js
-  const { can, isAdmin, isCoordinador, isPasante, isMedicina, isNutricion, area, user } =
-    usePermissions()
-  ```
-  `area` viene normalizado en mayúsculas (matchea `AREAS`). Úsalo como llave de
-  dispatch cuando hay un mapa por área.
-- **`@components/Can.jsx`** — para JSX condicional:
-  ```jsx
-  <Can permission={PERMISSIONS.SEE_USER_AREA_COLUMN}>...</Can>
-  ```
+| Pieza                      | Uso                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `@lib/permissions.js`      | Contiene `PERMISSIONS`, `can(user, perm)` y `canSeeRoute(user, route)`. Para agregar un permiso, añade su clave y su regla en `RULES`. |
+| `@hooks/usePermissions.js` | Expone los permisos y datos de sesión a los componentes React.                                                                         |
+| `@components/Can.jsx`      | Muestra contenido JSX solo cuando el usuario tiene el permiso indicado.                                                                |
 
-## Componentes y toasts
+El hook `usePermissions()` ofrece, entre otros, `can`, `isAdmin`, `isCoordinador`, `isPasante`, `isMedicina`, `isNutricion`, `area` y `user`. El valor `area` se normaliza a mayúsculas y coincide con las claves de `AREAS`; puede usarse para seleccionar una implementación según el área.
 
-- Primitivos reutilizables en `@components/` (Button, Input, Modal, Table, Tag,
-  FormRow, Stepper, EmptyState, ...). Reutiliza antes de crear.
-- Variantes con `cva` + helper `cn`. Modales con API composable
-  (`<Modal>` + `<Modal.Open>` + `<Modal.Content>`).
-- Toasts: `sonner`. Para errores de API, `toastApiError(error)` de `@lib/ApiError`.
+```jsx
+const { can, isAdmin, area, user } = usePermissions()
+
+<Can permission={PERMISSIONS.SEE_USER_AREA_COLUMN}>...</Can>
+```
+
+## Componentes y notificaciones
+
+Antes de crear componentes nuevos, revisa los elementos reutilizables en `@components/`, como `Button`, `Input`, `Modal`, `Table`, `Tag`, `FormRow`, `Stepper` y `EmptyState`.
+
+| Necesidad                | Convención existente                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Variantes de componentes | Usa `cva` junto con el helper `cn`.                                                    |
+| Diálogos                 | Compón `<Modal>` con `<Modal.Open>` y `<Modal.Content>`.                               |
+| Notificaciones           | Usa Sonner. Para errores de API, llama a `toastApiError(error)` desde `@lib/ApiError`. |
