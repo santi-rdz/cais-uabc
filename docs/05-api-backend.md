@@ -1,20 +1,35 @@
-# 05 · API del backend
+# API del backend
 
-## Anatomía de un endpoint
+Esta guía explica cómo se organiza la API del backend, qué responsabilidad tiene cada capa y qué formato reciben los clientes. 
 
-Cada recurso se implementa en cuatro capas finas. No mezcles responsabilidades.
+## Cómo se procesa una solicitud
 
+Una solicitud pasa por estas capas. Cada una tiene una responsabilidad concreta:
+
+| Capa           | Responsabilidad                                                  | Ejemplos de trabajo                                                    |
+| -------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `routes/`      | Define las rutas y conecta los middleware con los controladores. | Requerir autenticación, validar parámetros y elegir el controlador.    |
+| `controllers/` | Coordina la operación y construye la respuesta HTTP.             | Ejecutar una transacción y registrar la auditoría de una modificación. |
+| `models/`      | Consulta y modifica los datos mediante Prisma.                   | Convertir UUID, cargar relaciones y preparar los objetos de respuesta. |
+| `lib/`         | Reúne funciones de apoyo reutilizables.                          | UUID, fechas, errores, paginación y filtros de consulta.               |
+
+El recorrido habitual es:
+
+```mermaid
+flowchart TB
+    A["Solicitud HTTP"] --> B["Ruta y middleware<br/>autenticación y validación"]
+    B --> C["Controlador<br/>coordina la operación"]
+    C --> D["Modelo<br/>consulta o modifica datos"]
+    D --> E[("Prisma / MySQL")]
+    E --> D --> C
+    C --> F["Respuesta HTTP en JSON"]
 ```
-routes/       cablea path + middleware. Archivo flaco, sin lógica.
-   │
-controllers/  clase static. Arma la transacción + auditoría. NO valida, NO usa try/catch.
-   │
-models/       clase static. Habla con Prisma, convierte UUIDs, aplana con formatX().
-   │
-lib/          utilidades puras (uuid, dates, appError, paginate, queryFeatures).
-```
 
-### Route
+La validación de entrada ocurre en el middleware de la ruta. El modelo se encarga de acceder a los datos y el controlador coordina la operación; así se evita duplicar responsabilidades.
+
+### Rutas
+
+Las rutas conectan cada método HTTP con su controlador. También aplican los middleware necesarios, como autenticación y validación:
 
 ```js
 router.use(requireAuth)
@@ -27,7 +42,11 @@ router
   .delete(C.delete)
 ```
 
-### Controller
+En este ejemplo, todas las rutas requieren autenticación. El parámetro `id` se valida antes de atender las operaciones sobre un recurso específico; el cuerpo se valida al crear o actualizar.
+
+### Controladores
+
+El controlador coordina la solicitud y devuelve la respuesta HTTP. Si una operación modifica datos y genera un registro de auditoría, ambas acciones se ejecutan dentro de la misma transacción:
 
 ```js
 export class XController {
@@ -50,24 +69,22 @@ export class XController {
   }
 
   static async getById(req, res) {
-    res.json(await XModel.getById(req.params.id)) // el model lanza NotFoundError si no existe
+    res.json(await XModel.getById(req.params.id))
   }
 }
 ```
 
-Reglas del controller:
+Al implementar un controlador:
 
-- **Sin `try/catch` y sin validar el body** (Express 5 propaga los async errors;
-  la validación es middleware). `req.body` ya llega parseado por Zod.
-- **No chequea "no encontrado"** — el guard del model lanza `NotFoundError`.
-- **No arma `res.status` de error a mano** — lanza `AppError`.
-- Mutación + auditoría en **un solo `$transaction`**.
-- Datos **derivables** (ej. `paciente_id`) se toman del resultado del model, no del body.
+- No valides el cuerpo ni agregues `try/catch`. Express 5 propaga los errores de funciones `async`, y la validación se realiza en el middleware.
+- Deja que el modelo indique si el recurso no existe; `getById`, `update` y `delete` lanzan `NotFoundError` cuando corresponde.
+- Para errores de la aplicación, lanza la clase `AppError` adecuada. El middleware central construye la respuesta HTTP.
+- Ejecuta la modificación y su registro de auditoría en una sola transacción.
+- Obtén del resultado del modelo los datos que se puedan derivar, como `paciente_id`, en lugar de confiar en valores enviados por el cliente.
 
-### Model y `formatX`
+### Modelos y formato de los datos
 
-El model es capa fina sobre Prisma: convierte UUID↔Buffer, arma `include/select`,
-y expone `formatX(row)` que aplana relaciones al shape que espera el frontend.
+Los modelos son la capa de acceso a Prisma. Se encargan, entre otras cosas, de convertir UUID entre el formato interno y el formato que usa la API, cargar las relaciones necesarias y devolver los datos con `formatX`.
 
 ```js
 function formatUser(u) {
@@ -81,97 +98,98 @@ static async getById(id, tx = prisma) {
     where: { id: uuidToBuffer(id), deleted_at: null },
     include: includeRelations,
   })
-  if (!user) throw new NotFoundError('el usuario')   // única fuente del 404
+  if (!user) throw new NotFoundError('el usuario')
   return formatUser(user)
 }
 ```
 
-- El model es la **única fuente del 404**: `getById/update/delete` hacen el guard.
-- Conflictos de unicidad: pre-chequea y lanza `ConflictError`.
-- Si cambias `include/select`, actualiza `formatX` y revisa el frontend.
+El modelo es el punto donde se decide que un recurso no encontrado produce un 404. Si modificas las relaciones de `include` o los campos de `select`, revisa también `formatX` y el código del frontend que consume esa respuesta.
 
-## Formato de respuesta (wire format)
+Antes de insertar o actualizar, los modelos comprueban los conflictos de unicidad conocidos y lanzan `ConflictError` cuando encuentran uno.
 
-- **Un recurso** se devuelve como objeto plano, con `id` en UUID string y las
-  relaciones aplanadas por `formatX`.
-- **Fechas**: `@db.Date` como `'YYYY-MM-DD'`; `@db.DateTime` como ISO completo
-  (ver [03 · Base de datos](./03-base-de-datos-y-prisma.md)).
-- **Creación**: `201 { message, <recurso>: {...} }`.
-- **Actualización**: `200 { ... }` con el recurso actualizado (o `{ message }`).
-- **Borrado**: `200 { message }`.
-- **Listado paginado**: `{ <recurso>: [...], count }` — el cliente calcula las páginas.
+## Formato de las respuestas
 
-```jsonc
-// GET /usuarios?page=1
-{ "users": [{ "id": "…", "nombre": "…", "rol": "PASANTE" }], "count": 42 }
+La API entrega los recursos como objetos planos. Los identificadores se devuelven como cadenas UUID y las relaciones se preparan con `formatX`.
+
+| Operación             | Respuesta | Contenido                                                               |
+| --------------------- | --------- | ----------------------------------------------------------------------- |
+| Consultar un recurso  | `200`     | El recurso solicitado.                                                  |
+| Crear                 | `201`     | `{ message, <recurso> }` con el recurso creado.                         |
+| Actualizar            | `200`     | El recurso actualizado o `{ message }`.                                 |
+| Eliminar              | `200`     | `{ message }`.                                                          |
+| Listar con paginación | `200`     | `{ <recurso>: [...], count }`. El cliente calcula el número de páginas. |
+
+Las fechas `@db.Date` se representan como `YYYY-MM-DD`; las fechas `@db.DateTime`, como una cadena ISO completa. Consulta [03 · Base de datos](./03-base-de-datos-y-prisma.md) para más detalles.
+
+Ejemplo de listado (`GET /usuarios?page=1`):
+
+```json
+{
+  "users": [{ "id": "…", "nombre": "…", "rol": "PASANTE" }],
+  "count": 42
+}
 ```
 
-## Errores
+## Manejo de errores
 
-Nadie atrapa nada. Se lanza un `AppError` (o se deja propagar) y el middleware
-central de `app.js` arma el body. Subclases en `#lib/appError.js`:
+Los controladores y modelos lanzan errores de la aplicación o dejan que el error se propague. El middleware central de `app.js` convierte esos errores en respuestas HTTP. Las clases disponibles en `#lib/appError.js` son:
 
-| Clase                          | Status | `error` en el body |
-| ------------------------------ | ------ | ------------------ |
-| `BadRequestError`              | 400    | `BadRequest`       |
-| `UnauthorizedError`            | 401    | `Unauthorized`     |
-| `ForbiddenError`               | 403    | `Forbidden`        |
-| `NotFoundError('el paciente')` | 404    | `NotFound`         |
-| `ConflictError`                | 409    | `Conflict`         |
-| `ValidationError`              | 422    | `ValidationError`  |
-| `BadGatewayError`              | 502    | `BadGateway`       |
+| Clase de error                 | Código HTTP | Valor de `error` en la respuesta |
+| ------------------------------ | ----------: | -------------------------------- |
+| `BadRequestError`              | 400         | `BadRequest`                     |
+| `UnauthorizedError`            | 401         | `Unauthorized`                   |
+| `ForbiddenError`               | 403         | `Forbidden`                      |
+| `NotFoundError('el paciente')` | 404         | `NotFound`                       |
+| `ConflictError`                | 409         | `Conflict`                       |
+| `ValidationError`              | 422         | `ValidationError`                |
+| `BadGatewayError`              | 502         | `BadGateway`                     |
 
-Body de error estándar:
+Una respuesta de error estándar tiene esta forma:
 
-```jsonc
+```json
 { "error": "Conflict", "message": "El correo ya está registrado" }
 ```
 
-Casos especiales:
+La validación devuelve también los campos que necesitan corrección:
 
-- **Validación (422)** la produce el middleware `validate`, con la lista de campos:
-  ```jsonc
-  {
-    "error": "ValidationError",
-    "message": "Datos inválidos",
-    "fields": [{ "field": "correo", "message": "Correo inválido" }],
-  }
-  ```
-- **`meta`** se mergea al body: `throw new ConflictError('...', { emails })`.
-- **Errores de Prisma** que se escapan de un guard los traduce
-  `#lib/prismaError.js` (`P2002→409`, `P2025→404`, `P2003→409`).
-- Todo lo demás cae al **500** genérico (única rama que loguea).
+```json
+{
+  "error": "ValidationError",
+  "message": "Datos inválidos",
+  "fields": [{ "field": "correo", "message": "Correo inválido" }]
+}
+```
 
-## Validación de entrada (middleware)
+Otros detalles del manejo de errores:
 
-En `#middleware/validate.js`:
+- Se puede adjuntar información adicional con `meta`; por ejemplo: `throw new ConflictError('...', { emails })`.
+- `#lib/prismaError.js` traduce errores conocidos de Prisma: `P2002` a 409, `P2025` a 404 y `P2003` a 409.
+- Los errores no contemplados se responden con un 500 genérico y se registran en el log.
 
-| Helper                         | Valida                                           | Deja el resultado en                                   |
-| ------------------------------ | ------------------------------------------------ | ------------------------------------------------------ |
-| `validate(fn)`                 | `req.body`                                       | `req.body` (reemplazado por el dato parseado)          |
-| `validateQuery(fn)`            | `req.query`                                      | `req.validatedQuery` (query es read-only en Express 5) |
-| `validateUuidParam(name='id')` | `req.params[name]` es UUID                       | —                                                      |
-| `validateUuidQuery(name)`      | query param UUID obligatorio (scope de listados) | —                                                      |
+## Validación de datos
 
-Las funciones `validateX` (y `validatePartialX` para updates parciales) las
-exporta cada schema de `@cais/shared/schemas/*` como wrapper de `safeParse`. El
-frontend reutiliza esos mismos schemas (ver [07 · Frontend](./07-frontend.md)).
+El middleware de `#middleware/validate.js` valida el cuerpo, los parámetros o la consulta de la solicitud, según el helper utilizado:
+
+| Helper                           | Dato que valida                                                      | Dónde queda el dato validado                    |
+| -------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| `validate(fn)`                   | `req.body`                                                           | Reemplaza `req.body` con el resultado parseado. |
+| `validateQuery(fn)`              | `req.query`                                                          | `req.validatedQuery`.                           |
+| `validateUuidParam(name = 'id')` | El parámetro de ruta indicado, que debe ser UUID.                    | No agrega una propiedad nueva.                  |
+| `validateUuidQuery(name)`        | El parámetro de consulta indicado, que debe ser un UUID obligatorio. | No agrega una propiedad nueva.                  |
+
+Las funciones `validateX` y `validatePartialX` se exportan desde los esquemas de `@cais/shared/schemas/*`. Son wrappers de `safeParse`; el frontend reutiliza esos esquemas (consulta [07 · Frontend](./07-frontend.md)). `validateQuery` guarda el resultado en `req.validatedQuery` porque `req.query` es de solo lectura en Express 5.
 
 ## Paginación, búsqueda y orden
 
-- `parsePagination(req.query)` (`#lib/paginate.js`) → `{ page, limit }` con
-  `limit` clampeado a `MAX_PAGE_SIZE` (20). Default `PAGE_SIZE` = 10.
-- Helpers reutilizables en `#lib/queryFeatures.js`:
-  - `buildListArgs({ page, limit, orderBy, select })` → `{ skip, take, orderBy, select }`.
-  - `buildSearchWhere(search, fields)` → filtro tokenizado (cada palabra debe
-    aparecer en algún campo): `{ AND: tokens.map(t => ({ OR: fields.map(f => ({ [f]: { contains: t } })) })) }`.
-- Campos de búsqueda por dominio en `#lib/searchFields.js`.
-- Orden: definiciones en `shared/constants/*` (`[{ key, field, dir }]`) →
-  `formatDefs()` → `SORT_OPTIONS[sortBy] ?? default`.
+La paginación se interpreta con `parsePagination(req.query)`, definido en `#lib/paginate.js`. Devuelve `{ page, limit }`: el valor predeterminado de `PAGE_SIZE` es 10 y `limit` no puede superar `MAX_PAGE_SIZE` (20).
 
-```js
-static async getAll({ search, page, limit, areaId }) {
-  const where = {
+Para construir listados, `#lib/queryFeatures.js` ofrece estos helpers:
+
+| Helper                                            | Para qué sirve                                                                                                | Resultado                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `buildListArgs({ page, limit, orderBy, select })` | Prepara los argumentos de Prisma para paginar y ordenar.                                                      | `{ skip, take, orderBy, select }`            |
+| `buildSearchWhere(search, fields)`                | Busca cada palabra en los campos indicados. Todas las palabras deben aparecer en al menos uno de esos campos. | Un filtro Prisma compuesto por `AND` y `OR`. |
+= {
     deleted_at: null,
     ...(areaId != null && { pacientes_areas: { some: { area_id: areaId } } }),
     ...buildSearchWhere(search, PATIENT_SEARCH_FIELDS),
@@ -184,19 +202,20 @@ static async getAll({ search, page, limit, areaId }) {
 }
 ```
 
+La consulta y el conteo comparten el mismo filtro. Así, `count` corresponde al conjunto de resultados y no solo a la página actual.
+
 ## Auditoría
 
-Cada `CREAR` / `ACTUALIZAR` / `ELIMINAR` de una entidad de dominio (y el
-`INICIAR_SESION`) se registra con `AuditModel.create({ usuario_id, accion,
-entidad, objetivo_id, paciente_id? }, tx)` **dentro del mismo `$transaction`**
-que la mutación. Las claves están en `shared/constants/users.js`
-(`ACCIONES`, `ENTIDADES`).
+Las operaciones `CREAR`, `ACTUALIZAR` y `ELIMINAR` sobre entidades de dominio, junto con `INICIAR_SESION`, generan un registro de auditoría. Para las modificaciones, crea el registro con `AuditModel.create({ usuario_id, accion, entidad, objetivo_id, paciente_id? }, tx)` dentro de la misma transacción que modifica los datos.
 
-## Anti-patterns
+Las claves `ACCIONES` y `ENTIDADES` están definidas en `shared/constants/users.js`.
 
-- `try/catch` en controller/model — lanza `AppError`, responde el middleware.
-- `if (!x) return res.status(404)` en el controller — ya lo lanza el model.
-- Validar el body en el controller — usa `validate(validateX)` en la ruta.
-- `findUnique({ where: { id } })` sin `uuidToBuffer(id)`, o devolver un Buffer al cliente.
-- Mutación + audit en `await` separados — un solo `$transaction`.
-- Definir o importar Zod en el backend — los schemas viven en `shared/`.
+## Prácticas que conviene evitar
+
+- Añadir `try/catch` en controladores o modelos para convertir errores manualmente. Lanza `AppError` y deja que el middleware central responda.
+- Responder con un 404 desde el controlador. El modelo comprueba si el recurso existe y lanza `NotFoundError`.
+- Validar el cuerpo dentro del controlador. Usa `validate(validateX)` en la ruta.
+- Consultar un UUID sin convertirlo con `uuidToBuffer(id)` o devolver un `Buffer` en la respuesta.
+- Guardar la modificación y la auditoría en operaciones separadas. Incluye ambas en un único `$transaction`.
+- Definir o importar Zod en el backend. Los esquemas compartidos viven en `shared/`.
+
