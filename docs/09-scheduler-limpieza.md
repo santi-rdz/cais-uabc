@@ -36,15 +36,20 @@ El scheduler usa `node-cron` con `{ noOverlap: true }`. Si una ejecución sigue 
 ```mermaid
 flowchart TD
     A["Arranca backend en server.js"] --> B["startScheduler() registra el cron"]
-    B --> C["Llega el horario configurado"]
+    B --> C["Llega el horario configurado<br/>(CLEANUP_CRON_SCHEDULE: 03:00 diario)"]
     C --> D{"¿Ya hay una ejecución activa?"}
     D -->|Sí| E["Se omite este tick por noOverlap"]
     D -->|No| F["cleanupExpiredRecords()"]
-    F --> G["Transacción: elimina sesiones y registros que cumplen los criterios"]
-    G --> H["Espera al siguiente horario"]
-    F -. "fallo" .-> I["Registra el error en los logs"]
-    I --> H
+    F --> G["Transacción: elimina sesiones, tokens de restablecimiento<br/>e invitaciones que cumplen los criterios"]
+    G -->|Éxito| H["Espera al siguiente horario"]
+    G -. "Fallo" .-> I["La transacción se revierte<br/>(no se elimina ningún registro)"]
+    I --> I2["execution:failed registra el error en los logs<br/>(el backend sigue en ejecución)"]
+    I2 --> H
+    E --> H
+    H --> C
+
     J["Cierre del servidor"] --> K["stopScheduler()"]
+    K --> L(["El cron deja de programar ejecuciones"])
 ```
 
 ## Dónde se ejecuta
