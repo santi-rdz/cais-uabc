@@ -1,76 +1,89 @@
 # 09 · Scheduler de limpieza
 
-Job programado que borra filas expiradas que de otro modo crecen sin límite:
-sesiones vencidas, tokens de reset de contraseña e invitaciones de registro
-vencidas/usadas. `registro_auditoria` **no** entra aquí — es un log de
-auditoría, crecer es su función.
+El backend ejecuta periódicamente una tarea que elimina sesiones y registros de autenticación que ya no se necesitan. La tarea limpia sesiones vencidas, tokens de restablecimiento de contraseña y invitaciones expiradas o usadas.
 
-## Archivos
+Los registros de `registro_auditoria` no se eliminan con este proceso: su propósito es conservar el historial de acciones.
 
-| Archivo                                     | Rol                                                                    |
-| ------------------------------------------- | ---------------------------------------------------------------------- |
-| `backend/src/jobs/cleanupExpiredRecords.js` | Función centralizada: un `$transaction` con los 3 `deleteMany`         |
-| `backend/src/jobs/scheduler.js`             | Programa la función con `node-cron` (`startScheduler`/`stopScheduler`) |
-| `backend/src/server.js`                     | Llama `startScheduler()` al boot y `stopScheduler()` en el shutdown    |
-| `backend/src/lib/constants.js`              | `CLEANUP_CRON_SCHEDULE`, `USED_TOKEN_GRACE_MS`                         |
+## Archivos relacionados
 
-## Qué borra y cuándo
+| Archivo                                     | Responsabilidad                                                                    |
+| ------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `backend/src/jobs/cleanupExpiredRecords.js` | Ejecuta en una transacción los tres `deleteMany` de limpieza.                      |
+| `backend/src/jobs/scheduler.js`             | Programa la tarea con `node-cron` y expone `startScheduler()` y `stopScheduler()`. |
+| `backend/src/server.js`                     | Inicia el scheduler al arrancar el servidor y lo detiene durante el cierre.        |
+| `backend/src/lib/constants.js`              | Define `CLEANUP_CRON_SCHEDULE` y `USED_TOKEN_GRACE_MS`.                            |
 
-```js
-// cleanupExpiredRecords.js
-sessions            → expire < ahora
-password_reset_tokens → expira_at < ahora  OR  (usado=true Y created_at < ahora - 24h)
-invitaciones_registro → expira_at < ahora  OR  (usado=true Y created_at < ahora - 24h)
+## Qué registros se eliminan
+
+La función `cleanupExpiredRecords.js` compara las fechas con la hora actual. Los tokens usados tienen un periodo de gracia de 24 horas antes de poder eliminarse por antigüedad.
+
+| Tabla                   | Criterio de eliminación                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `sessions`              | La sesión venció (`expire < ahora`).                                                                                         |
+| `password_reset_tokens` | El token venció (`expira_at < ahora`) o fue usado y tiene más de 24 horas (`created_at < ahora - USED_TOKEN_GRACE_MS`).      |
+| `invitaciones_registro` | La invitación venció (`expira_at < ahora`) o fue usada y tiene más de 24 horas (`created_at < ahora - USED_TOKEN_GRACE_MS`). |
+
+La expiración y el periodo de gracia son criterios distintos: un registro se elimina al vencer o, si fue usado, cuando supera las 24 horas de antigüedad. `registro_auditoria` queda fuera de esta limpieza.
+
+## Horario de ejecución
+
+`CLEANUP_CRON_SCHEDULE` está definido como `'0 3 * * *'`, es decir, todos los días a las 3:00 a. m. Las sesiones y los tokens vencidos dejan de ser válidos por sí mismos, así que la limpieza periódica sirve para retirar sus filas sin tener que ejecutarla continuamente.
+
+El scheduler usa `node-cron` con `{ noOverlap: true }`. Si una ejecución sigue activa cuando llega el siguiente horario, esa nueva ejecución se omite en lugar de quedar en espera.
+
+## Ciclo de vida
+
+```mermaid
+flowchart TD
+    A["Arranca backend en server.js"] --> B["startScheduler() registra el cron"]
+    B --> C["Llega el horario configurado"]
+    C --> D{"¿Ya hay una ejecución activa?"}
+    D -->|Sí| E["Se omite este tick por noOverlap"]
+    D -->|No| F["cleanupExpiredRecords()"]
+    F --> G["Transacción: elimina sesiones y registros que cumplen los criterios"]
+    G --> H["Espera al siguiente horario"]
+    F -. "fallo" .-> I["Registra el error en los logs"]
+    I --> H
+    J["Cierre del servidor"] --> K["stopScheduler()"]
 ```
 
-Un token/invitación usado no se borra al instante: se guarda `USED_TOKEN_GRACE_MS`
-(24h) por si hace falta auditar "esto ya se usó".
+## Dónde se ejecuta
 
-## Programación
+El scheduler se inicia desde `server.js`, que es el proceso de backend que atiende la aplicación. No se inicia en los tests: Jest importa `app.js`, no `server.js`, y tampoco se ejecuta al levantar la aplicación únicamente con `supertest`.
 
-`CLEANUP_CRON_SCHEDULE = '0 3 * * *'` — diario, 3:00am. Sin urgencia real de
-borrar más seguido: las filas vencidas ya están inertes (una sesión vencida no
-autentica, un token vencido no valida), esto es solo housekeeping. Diario es el
-estándar para apps de este tamaño; cambiar el intervalo es editar esa constante.
+En la configuración actual hay un solo proceso backend en `compose.yml`, así que no se requiere coordinación entre instancias. Si el backend se escala horizontalmente, agrega un mecanismo de locking antes de ejecutar varias instancias. Se puede usar `{ distributed: true }` de `node-cron` o implementar un lock propio.
 
-`node-cron` con `{ noOverlap: true }`: si una corrida tarda más que el
-intervalo, la siguiente se salta en vez de apilarse.
+## Cómo probar la limpieza en desarrollo
 
-## Dónde corre
+El scheduler espera al siguiente tick configurado. Con `'0 3 * * *'`, la espera puede ser de hasta 24 horas. Para probarlo antes, puedes adelantar temporalmente el cron o ejecutar directamente la función.
 
-Solo se activa desde `server.js` (el proceso real). **No corre en tests**
-(Jest importa `app.js`, no `server.js`) ni si solo levantas la app con
-`supertest`. Un solo proceso backend en este stack (`compose.yml`), así
-que no hay riesgo de que dos instancias lo corran a la vez — si eso cambia
-algún día, agregar locking (`{ distributed: true }` de node-cron, o un lock a
-mano) antes de escalar horizontalmente.
+### Opción 1: adelantar el cron
 
-## Probar en dev
+1. Cambia temporalmente `CLEANUP_CRON_SCHEDULE` a `'* * * * *'` en `backend/src/lib/constants.js` para que se ejecute cada minuto.
+2. El backend de desarrollo usa `--watch-path=src` y se reinicia al guardar el cambio.
+3. Comprueba el resultado en los logs del backend.
+4. Restaura el valor `'0 3 * * *'` antes de hacer commit.
 
-El scheduler solo corre en el próximo tick del cron (con `'0 3 * * *'`, hasta
-24h de espera). Para probar sin esperar:
+### Opción 2: ejecutar la función directamente
 
-1. Cambiar temporalmente `CLEANUP_CRON_SCHEDULE` a `'* * * * *'` (cada minuto)
-   en `constants.js` — el backend en dev corre con `--watch-path=src`, se
-   reinicia solo al guardar.
-2. O disparar la función a mano, sin tocar el cron:
-   ```bash
-   cd backend
-   node --env-file-if-exists=../.env -e "
-   import('#jobs/cleanupExpiredRecords.js').then(async (m) => {
-     console.log(await m.cleanupExpiredRecords())
-     process.exit(0)
-   })
-   " --input-type=module --conditions=node
-   ```
-3. El seed deja un caso ya vencido listo para probar:
-   `invitaciones_registro.correo = 'pasante.expirado@uabc.edu.mx'`.
+Desde la raíz del repositorio:
 
-**Revertir siempre** el cambio del paso 1 antes de commitear — `'0 3 * * *'` es
-el valor de producción.
+```bash
+cd backend
+node --env-file-if-exists=../.env -e "
+import('#jobs/cleanupExpiredRecords.js').then(async (m) => {
+  console.log(await m.cleanupExpiredRecords())
+  process.exit(0)
+})
+" --input-type=module --conditions=node
+```
 
-## Errores
+El seed incluye una invitación vencida para probar el caso de expiración:
 
-Un fallo en la corrida no tumba el proceso: se captura y se loguea vía
-`.on('execution:failed', ...)` en `scheduler.js`. Revisar logs del backend si
-se sospecha que dejó de correr.
+```text
+invitaciones_registro.correo = 'pasante.expirado@uabc.edu.mx'
+```
+
+## Manejo de errores
+
+Si la tarea falla, el scheduler captura el error y lo registra mediante `.on('execution:failed', ...)` en `scheduler.js`. El fallo no detiene el proceso del backend. Si parece que la limpieza dejó de ejecutarse, revisa los logs del backend.
