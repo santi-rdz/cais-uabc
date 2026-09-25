@@ -1,6 +1,6 @@
 # 04 · Autenticación y permisos
 
-## Sesión con cookie (no JWT)
+## Sesión con cookie
 
 La autenticación usa `express-session` con un store propio sobre Prisma
 (`PrismaSessionStore`). Al hacer login se emite una cookie `connect.sid`
@@ -89,8 +89,6 @@ medicineRouter.use(requireArea(AREAS.MEDICINA))
 ## Registro por invitación
 
 No hay registro abierto. El flujo es:
-
-```
 
 ```mermaid
 flowchart TD

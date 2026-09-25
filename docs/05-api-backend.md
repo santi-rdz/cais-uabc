@@ -82,6 +82,33 @@ Al implementar un controlador:
 - Ejecuta la modificación y su registro de auditoría en una sola transacción.
 - Obtén del resultado del modelo los datos que se puedan derivar, como `paciente_id`, en lugar de confiar en valores enviados por el cliente.
 
+#### Por qué no hay `try/catch` ni validación en el controlador
+
+No valides el cuerpo de la petición ni agregues bloques try/catch dentro de los route handlers. El sistema centraliza el manejo de errores en un único middleware, por lo que replicar esta lógica en cada handler duplicaría trabajo y podría introducir formatos de respuesta inconsistentes.
+
+- **Propagación automática de errores (Express 5)**: a partir de Express 5, los route handlers y middlewares que retornan una Promise son gestionados automáticamente por el framework. Si la promesa se rechaza, Express invoca next(err) internamente sin necesidad de capturarlo de forma manual.
+- **Validación centralizada**: la validación del cuerpo, parámetros y query strings se realiza en un middleware dedicado, ejecutado antes del handler. Esto evita lógica de validación dispersa entre distintos endpoints.
+- **Formato de respuesta unificado**: todos los errores —de validación o de ejecución— convergen en un único error-handling middleware ((err, req, res, next)), garantizando que la estructura de la respuesta de error sea consistente en toda la API.
+
+```js
+// Ejemplo correcto:
+router.get('/users/:id', async (req, res) => {
+  const user = await getUser(req.params.id);
+  res.json(user);
+});
+
+router.get('/users/:id', async (req, res, next) => {
+  try {
+    const user = await getUser(req.params.id);
+    res.json(user);
+  } catch (err) {
+    next(err); // innecesario en Express 5
+  }
+});
+```
+```
+```
+
 ### Modelos y formato de los datos
 
 Los modelos son la capa de acceso a Prisma. Se encargan, entre otras cosas, de convertir UUID entre el formato interno y el formato que usa la API, cargar las relaciones necesarias y devolver los datos con `formatX`.
@@ -189,6 +216,7 @@ Para construir listados, `#lib/queryFeatures.js` ofrece estos helpers:
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `buildListArgs({ page, limit, orderBy, select })` | Prepara los argumentos de Prisma para paginar y ordenar.                                                      | `{ skip, take, orderBy, select }`            |
 | `buildSearchWhere(search, fields)`                | Busca cada palabra en los campos indicados. Todas las palabras deben aparecer en al menos uno de esos campos. | Un filtro Prisma compuesto por `AND` y `OR`. |
+
 ```
 = {
     deleted_at: null,
@@ -219,4 +247,3 @@ Las claves `ACCIONES` y `ENTIDADES` están definidas en `shared/constants/users.
 - Consultar un UUID sin convertirlo con `uuidToBuffer(id)` o devolver un `Buffer` en la respuesta.
 - Guardar la modificación y la auditoría en operaciones separadas. Incluye ambas en un único `$transaction`.
 - Definir o importar Zod en el backend. Los esquemas compartidos viven en `shared/`.
-

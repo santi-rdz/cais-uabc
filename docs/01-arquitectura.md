@@ -35,11 +35,7 @@ import { validateEmergency } from '@cais/shared/schemas/medicina/emergency'
 import { correoSchema } from '@cais/shared/schemas/fields'
 ```
 
-> Si agregas un sub-namespace nuevo bajo `shared/schemas/`, actualiza
-> `shared/package.json#exports` o nada podrá importarlo.
-
 ## Cómo viaja una request
-
 
 ```mermaid
 flowchart TB
@@ -74,10 +70,4 @@ flowchart LR
     n7 --> n8["components/"] & n9["hooks/"] & n10["forms/"] & n11["pages/"] & n12["sections/"] & n13["tabs/"]
 ```
 
-## Idioma e identificadores
 
-- Mensajes al usuario y de commit: **español**.
-- Columnas de DB: **español** (el schema es en español) → `snake_case`.
-- Helpers, funciones y clases: **inglés**.
-- `camelCase` variables/funciones · `PascalCase` clases/componentes ·
-  `SCREAMING_SNAKE_CASE` constantes · `snake_case` solo columnas de DB.

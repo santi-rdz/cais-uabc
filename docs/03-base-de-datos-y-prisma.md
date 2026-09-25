@@ -114,7 +114,7 @@ El schema es la fuente de verdad. Tras editarlo:
 pnpm run prisma:migrate      # migrate dev — genera el SQL, lo aplica y regenera el cliente
 ```
 
-Commitea **`schema.prisma` + el archivo generado** en `prisma/migrations/`.
+Agrega al control de versiones tanto `schema.prisma` como el archivo de migración generado dentro de `prisma/migrations/`.
 
 | Comando                            | Cuándo                                                                       |
 | ---------------------------------- | ---------------------------------------------------------------------------- |
