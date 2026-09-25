@@ -150,3 +150,20 @@ flowchart LR
 ```
 
 El frontend consume los resultados mediante el hook `useIcd11Search`, que retrasa las consultas mientras la persona escribe. Se usa en los campos de diagnóstico de Medicina. Si la API de la OMS falla, el backend responde con `BadGatewayError` (502).
+
+En caso de falla, se pueden agregar códigos de manera manual directamente en el formulario, a coste de perder consistencia con el catalogo de la API.
+
+### Requisitos para usar la API de la OMS
+
+La API CIE-11 requiere autenticación. Para que el backend pueda consultarla se necesitan una cuenta en el portal de la OMS, las credenciales de esa cuenta y ciertos encabezados en cada solicitud.
+
+#### Credenciales de la API
+
+Al iniciar sesión en el portal, la opción **View API access key** muestra el `client_id` y el `client_secret`. El backend los lee desde el archivo `.env`:
+
+```env
+ICD_CLIENT_ID=<client_id>
+ICD_CLIENT_SECRET=<client_secret>
+```
+
+Estos valores no se suben al repositorio. El portal permite crear y eliminar varios clientes en la misma cuenta. Si se elimina un cliente, cualquier instancia configurada con ese `client_id` pierde el acceso de inmediato; antes de eliminar uno, confirma que ningún entorno lo esté usando.
