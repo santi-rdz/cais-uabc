@@ -69,5 +69,3 @@ flowchart LR
     n2 --> n3["App.js"] & n4["main.js"] & n5["pages/"] & n6["ui/"] & n7["features/"] & n14["hooks/"] & n15["schemas/"] & n16["lib/"] & n17["services/"]
     n7 --> n8["components/"] & n9["hooks/"] & n10["forms/"] & n11["pages/"] & n12["sections/"] & n13["tabs/"]
 ```
-
-

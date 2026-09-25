@@ -1,6 +1,6 @@
 # API del backend
 
-Esta guía explica cómo se organiza la API del backend, qué responsabilidad tiene cada capa y qué formato reciben los clientes. 
+Esta guía explica cómo se organiza la API del backend, qué responsabilidad tiene cada capa y qué formato reciben los clientes.
 
 ## Cómo se procesa una solicitud
 
@@ -93,20 +93,22 @@ No valides el cuerpo de la petición ni agregues bloques try/catch dentro de los
 ```js
 // Ejemplo correcto:
 router.get('/users/:id', async (req, res) => {
-  const user = await getUser(req.params.id);
-  res.json(user);
-});
+  const user = await getUser(req.params.id)
+  res.json(user)
+})
 
 router.get('/users/:id', async (req, res, next) => {
   try {
-    const user = await getUser(req.params.id);
-    res.json(user);
+    const user = await getUser(req.params.id)
+    res.json(user)
   } catch (err) {
-    next(err); // innecesario en Express 5
+    next(err) // innecesario en Express 5
   }
-});
+})
 ```
+
 ```
+
 ```
 
 ### Modelos y formato de los datos
@@ -163,13 +165,13 @@ Los controladores y modelos lanzan errores de la aplicación o dejan que el erro
 
 | Clase de error                 | Código HTTP | Valor de `error` en la respuesta |
 | ------------------------------ | ----------: | -------------------------------- |
-| `BadRequestError`              | 400         | `BadRequest`                     |
-| `UnauthorizedError`            | 401         | `Unauthorized`                   |
-| `ForbiddenError`               | 403         | `Forbidden`                      |
-| `NotFoundError('el paciente')` | 404         | `NotFound`                       |
-| `ConflictError`                | 409         | `Conflict`                       |
-| `ValidationError`              | 422         | `ValidationError`                |
-| `BadGatewayError`              | 502         | `BadGateway`                     |
+| `BadRequestError`              |         400 | `BadRequest`                     |
+| `UnauthorizedError`            |         401 | `Unauthorized`                   |
+| `ForbiddenError`               |         403 | `Forbidden`                      |
+| `NotFoundError('el paciente')` |         404 | `NotFound`                       |
+| `ConflictError`                |         409 | `Conflict`                       |
+| `ValidationError`              |         422 | `ValidationError`                |
+| `BadGatewayError`              |         502 | `BadGateway`                     |
 
 Una respuesta de error estándar tiene esta forma:
 
