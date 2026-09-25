@@ -17,20 +17,19 @@ máquina** y **solo MySQL en Docker**. Producción sí usa Docker completo.
 pnpm run setup
 ```
 
-Ese comando hace, en orden: `pnpm install` → levanta la DB en Docker → espera a
-que esté lista → genera el cliente Prisma → aplica las migraciones
-(`migrate deploy`) → siembra datos de prueba.
+Ese comando hace, en orden: `pnpm install` -> levanta la DB en Docker -> espera a
+que esté lista -> genera el cliente Prisma -> aplica las migraciones
+(`migrate deploy`) -> siembra datos de prueba.
 
 ## Día a día
 
 ```bash
-pnpm run dev          # levanta la DB (Docker) y corre backend + frontend en paralelo
+# Levanta la DB (Docker) y corre backend + frontend en paralelo
+pnpm run dev
 ```
 
-- El backend arranca en watch y **aplica migraciones pendientes al iniciar**
-  (`prisma generate && prisma migrate deploy`), así que no tienes que hacerlo a mano.
-- Al actualizar `main`, corre `pnpm install` (por deps nuevas) y `pnpm run dev`:
-  las migraciones se aplican solas.
+- El backend arranca en watch y **aplica migraciones pendientes al iniciar** (`prisma generate && prisma migrate deploy`), así que no tienes que hacerlo a mano.
+- Al actualizar `main`, corre `pnpm install` (por deps nuevas) y `pnpm run dev`: las migraciones se aplican solas.
 
 ## Puertos
 
@@ -40,8 +39,7 @@ pnpm run dev          # levanta la DB (Docker) y corre backend + frontend en par
 | Backend (Express)                  | `8000` |
 | MySQL (dev, mapea al 3306 interno) | `3307` |
 
-El `BASE_URL` del frontend está hardcodeado a `http://localhost:8000` en
-`frontend/src/lib/constants.js`.
+El `BASE_URL` del frontend está hardcodeado a `http://localhost:8000` en `frontend/src/lib/constants.js`.
 
 ## Comandos raíz
 
@@ -93,7 +91,5 @@ Backend, en `.env` de la raíz (ver `.env.example`):
 
 ## Errores comunes al levantar
 
-- **Puerto 8000 ocupado por otro proyecto** → la app puede responder 404
-  "foráneos". Verifica con `docker ps` que ningún otro contenedor tome el 8000.
-- **Error de columnas/tipos al migrar** con datos viejos incompatibles →
-  `pnpm run db:fresh` (borra datos de dev y recrea desde cero).
+- **Puerto 8000 ocupado por otro proyecto** -> la app puede responder 404 "foráneos". Verifica con `docker ps` que ningún otro contenedor tome el 8000.
+- **Error de columnas/tipos al migrar** con datos viejos incompatibles -> `pnpm run db:fresh` (borra datos de dev y recrea desde cero).

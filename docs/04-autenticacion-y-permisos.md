@@ -32,15 +32,14 @@ req.session.area // 'MEDICINA' | 'NUTRICION' | null
 POST /auth/login   { email, password }
 ```
 
-1. Busca el usuario por correo. Si no existe o la contraseña (bcrypt) no coincide
-   → `401` con mensaje único `"Correo o contraseña inválidos"` (evita enumerar cuentas).
-2. Si la cuenta no está `ACTIVO` → `403 "Cuenta desactivada"`.
+1. Busca el usuario por correo. Si no existe o la contraseña (bcrypt) no coincide `401` con mensaje único `"Correo o contraseña inválidos"` (evita enumerar cuentas).
+2. Si la cuenta no está `ACTIVO` -> `403 "Cuenta desactivada"`.
 3. **Regenera la sesión** (`regenerateSession`, anti session-fixation) y la
    repuebla con `userId/role/areaId/area`.
 4. Registra `INICIAR_SESION` en auditoría. Responde `{ ok: true }`.
 
 - `GET /auth/me` → datos del usuario de la sesión.
-- `POST /auth/logout` → `destroySession` + `clearCookie`.
+- `POST /auth/logout` -> `destroySession` + `clearCookie`.
 
 > `express-session` usa callbacks, no promesas. Usa siempre
 > `regenerateSession` / `destroySession` de `#lib/session.js` (están
@@ -71,7 +70,7 @@ En `backend/src/middleware/auth.js`:
 | `requireRole(...roles)` | Exige uno de los roles                | `403`     |
 | `requireArea(...areas)` | Exige el área; **admin siempre pasa** | `403`     |
 
-Orden en una ruta: **permiso → validación → controller**.
+Orden en una ruta: **permiso -> validación -> controller**.
 
 ```js
 router.use(requireAuth)
@@ -81,9 +80,10 @@ router.route('/').get(privileged, C.getAll).post(privileged, validate(validateX)
 Los routers de área ya montan el guard de área:
 
 ```js
-// routes/medicine.js
+// Routes/medicine.js
 medicineRouter.use(requireAuth)
-medicineRouter.use(requireArea(AREAS.MEDICINA)) // admin pasa; pasante/coord de nutrición no
+// Admin pasa; pasante/coord de nutrición no
+medicineRouter.use(requireArea(AREAS.MEDICINA))
 ```
 
 ## Registro por invitación
@@ -91,15 +91,21 @@ medicineRouter.use(requireArea(AREAS.MEDICINA)) // admin pasa; pasante/coord de 
 No hay registro abierto. El flujo es:
 
 ```
-1. Un COORDINADOR o ADMIN emite una invitación
-      → crea `invitaciones_registro` con token UUID + correo + rol
-      → se envía un correo con el link
 
-2. El invitado completa su registro
-      POST /usuarios/registro   { token, nombre, correo, password, ... }
-      → se valida el token (no usado, no expirado)
-      → el schema de validación depende del rol de la invitación (resuelto en runtime)
-      → se crea el usuario con contraseña bcrypt
+```mermaid
+flowchart TD
+    subgraph S1["1. Emisión de la invitación"]
+        A["COORDINADOR o ADMIN<br/>emite una invitación"] --> B["Se crea invitaciones_registro<br/>(token UUID + correo + rol)"]
+        B --> C["Se envía correo<br/>con el link de invitación"]
+    end
+
+    subgraph S2["2. Registro del invitado"]
+        D["El invitado completa su registro<br/>POST /usuarios/registro<br/>{ token, nombre, correo, password, ... }"] --> E["Se valida el token<br/>(no usado, no expirado)"]
+        E --> F["Se resuelve el schema de validación<br/>según el rol de la invitación (runtime)"]
+        F --> G["Se crea el usuario<br/>con contraseña bcrypt"]
+    end
+
+    C -.->|"link recibido"| D
 ```
 
 `POST /usuarios/registro` es **pública** (va antes de `requireAuth` en el router).

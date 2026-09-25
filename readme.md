@@ -1,4 +1,4 @@
-# CAIS — Sistema de Administración
+z# CAIS — Sistema de Administración
 
 Sistema de administración interna para el Centro de Atención Integral para la Salud (CAIS) de la UABC. Gestiona usuarios (internos y coordinadores), pacientes, emergencias y expedientes clínicos con módulos de medicina y nutrición.
 
@@ -102,31 +102,16 @@ pnpm run prisma:studio   # Prisma Studio (explorador visual de la DB)
 
 ## Estructura
 
-```
-cais-uabc/
-├── frontend/
-│   └── src/
-│       ├── features/       # Módulos por dominio
-│       │   ├── authentication/
-│       │   ├── users/
-│       │   ├── patients/
-│       │   └── emergencies/
-│       ├── pages/          # Componentes de ruta
-│       ├── ui/             # Componentes reutilizables
-│       ├── services/       # Llamadas a la API
-│       └── hooks/          # Hooks compartidos
-├── backend/
-│   └── src/
-│       ├── routes/         # Definición de rutas Express
-│       ├── controllers/    # Lógica de cada endpoint
-│       ├── services/       # Lógica de negocio
-│       ├── models/         # Modelos Prisma
-│       └── middleware/     # Autenticación, etc.
-├── shared/
-│   ├── schemas/            # Validaciones Zod compartidas front/back
-│   └── constants/          # Constantes compartidas
-└── database/
-    └── migrations/         # Migraciones SQL (ejecutadas al iniciar MySQL)
+```mermaid
+flowchart LR
+    A["Cais-UABC"] --> n1["frontend"] & n3["backend"] & n2["shared"]
+    n1 --> n5["src"]
+    n5 --> n6["features"] & n11["pages"] & n12["ui"] & n13["services"] & n14["hooks"]
+    n6 --> n7["authentication"] & n8["users"] & n9["patients"] & n10["emergencies"]
+    n3 --> n15["src"] & n23["prisma"]
+    n15 --> n16["routes"] & n17["controllers"] & n18["services"] & n19["models"] & n20["middleware"]
+    n2 --> n21["schemas"] & n22["constants"]
+    n23 --> n24["migrations"]
 ```
 
 ## Usuarios de prueba

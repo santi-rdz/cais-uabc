@@ -1,11 +1,8 @@
 # Documentación CAIS
 
-Sistema de administración del **Centro de Atención Integral para la Salud (CAIS)**
-de la UABC. Gestiona pacientes, historias clínicas y evaluaciones de dos áreas
-(Medicina y Nutrición), con control de acceso por rol y área.
+Sistema de administración del **Centro de Atención Integral para la Salud (CAIS)** de la UABC. Gestiona pacientes, historias clínicas y evaluaciones de dos áreas (Medicina y Nutrición), con control de acceso por rol y área.
 
-Esta carpeta es el punto de entrada para cualquier persona que se integra al
-proyecto. Está organizada por rubro; léela en orden si es tu primer día.
+Esta carpeta es el punto de entrada para cualquier persona que se integra al proyecto. Está organizada por rubro; léela en orden si es tu primer día.
 
 ## Mapa de la documentación
 
@@ -32,5 +29,4 @@ proyecto. Está organizada por rubro; léela en orden si es tu primer día.
 
 ## Regla de oro antes de escribir código
 
-Lee el patrón existente más cercano (otro controller, otro hook, otro schema) y
-replícalo. La consistencia del código es una regla dura del proyecto.
+Lee el patrón existente más cercano (otro controller, otro hook, otro schema) y replícalo. La consistencia del código es una regla dura del proyecto.

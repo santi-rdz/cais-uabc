@@ -47,7 +47,7 @@ Implicaciones al leer:
 - Para ocultar los hijos de un padre borrado se usa un **relation filter**:
   `historias_pacientes_nutricion: { deleted_at: null }`.
 
-Los **tokens e invitaciones** (efímeros) sí se borran físicamente (hard delete).
+Los **tokens e invitaciones** sí se borran físicamente (hard delete).
 
 ### 3. Timestamps de auditoría (en inglés)
 
@@ -86,7 +86,7 @@ Regla del sistema:
 // backend/src/lib/dates.js
 import { toDateOnly, withDateOnly } from '#lib/dates.js'
 
-toDateOnly(row.fecha_nacimiento) // Date → '2000-05-30'
+toDateOnly(row.fecha_nacimiento) // Date -> '2000-05-30'
 withDateOnly(obj, ['fecha_eval']) // convierte varias claves de golpe
 ```
 
@@ -123,8 +123,7 @@ Commitea **`schema.prisma` + el archivo generado** en `prisma/migrations/`.
 | `db:fresh`                         | Reset total de la DB de dev (borra datos, recrea, migra, siembra)            |
 
 > `migrate reset` está bloqueado por un guard que exige consentimiento explícito.
-> Para actualizar tu DB conservando datos, usa `prisma:deploy` (o simplemente
-> `pnpm run dev`, que lo corre al arrancar).
+> Para actualizar tu DB conservando datos, usa `prisma:deploy` (o simplemente `pnpm run dev`, que lo corre al arrancar).
 
 ## DTOs vs Prisma vs wire format
 
@@ -132,6 +131,4 @@ No hay capa explícita de DTOs. El "wire format" (lo que ve el cliente) se
 construye en los models con funciones `formatX(row)` que aplanan relaciones y
 convierten los `Bytes` UUID a string.
 
-> Si cambias un `select`/`include`, **actualiza el `formatX` del mismo model y
-> revisa el frontend que consume ese endpoint** — no hay tipos que avisen del
-> rompimiento.
+> Si cambias un `select`/`include`, **actualiza el `formatX` del mismo model y revisa el frontend que consume ese endpoint** — no hay tipos que avisen del rompimiento.
