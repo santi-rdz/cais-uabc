@@ -189,6 +189,7 @@ Para construir listados, `#lib/queryFeatures.js` ofrece estos helpers:
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `buildListArgs({ page, limit, orderBy, select })` | Prepara los argumentos de Prisma para paginar y ordenar.                                                      | `{ skip, take, orderBy, select }`            |
 | `buildSearchWhere(search, fields)`                | Busca cada palabra en los campos indicados. Todas las palabras deben aparecer en al menos uno de esos campos. | Un filtro Prisma compuesto por `AND` y `OR`. |
+```
 = {
     deleted_at: null,
     ...(areaId != null && { pacientes_areas: { some: { area_id: areaId } } }),
