@@ -8,6 +8,7 @@ Esta carpeta es el punto de entrada para cualquier persona que se integra al pro
 
 | #   | Documento                                                    | Qué cubre                                                                  |
 | --- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| 00  | [Buenas prácticas](./00-buenas-practicas.md)                 | Monorepo, workspaces, stack, cómo viaja una request                        |
 | 01  | [Arquitectura](./01-arquitectura.md)                         | Monorepo, workspaces, stack, cómo viaja una request                        |
 | 02  | [Entorno local](./02-entorno-local.md)                       | Requisitos, setup, comandos, puertos                                       |
 | 03  | [Base de datos y Prisma](./03-base-de-datos-y-prisma.md)     | Schema, UUIDs, soft-delete, timestamps, fechas, migraciones                |
